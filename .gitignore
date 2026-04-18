@@ -23,6 +23,7 @@ backend/catkin_ws/build/
 backend/catkin_ws/devel/
 backend/catkin_ws/install/
 backend/catkin_ws/logs/
+backend/catkin_ws/.catkin_tools/
 build/
 devel/
 install/
