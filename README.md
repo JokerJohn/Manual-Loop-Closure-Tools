@@ -17,6 +17,19 @@ Offline manual loop closure editing and optimization tools for LiDAR mapping pos
 
 用于激光雷达建图位姿图的离线手动闭环编辑与优化工具。
 
+## Watch the Tutorial | 视频教程
+
+<p align="center">
+  <a href="https://youtu.be/lemd4XfPSYY">
+    <img src="assets/video-tutorial-card.png" alt="Watch the tutorial on YouTube" width="100%" />
+  </a>
+</p>
+
+<p align="center">
+  Click the card to watch the end-to-end workflow demo on YouTube.<br/>
+  点击上方卡片可观看完整工具演示视频。
+</p>
+
 ## Overview | 项目简介
 
 This repository packages the manual loop-closure workflow into a standalone open-source project with:
@@ -79,11 +92,6 @@ source .venv/bin/activate
 make backend
 python launch_gui.py --session-root /path/to/mapping_session
 ```
-
-## Tutorial Video | 视频教程
-
-- YouTube: https://youtu.be/lemd4XfPSYY
-- YouTube 操作教程: https://youtu.be/lemd4XfPSYY
 
 You can also point directly to a `g2o` file:
 
