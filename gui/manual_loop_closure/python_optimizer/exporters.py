@@ -240,21 +240,8 @@ def write_pose_graph_g2o(
                         + f" {record.robust_type} {record.robust_param:.15e}\n"
                     )
 
-        selected_prior = None
-        for record in factor_records:
-            if isinstance(record, PosePriorRecord) and record.node_id == 0:
-                selected_prior = record
-                break
-        if selected_prior is not None:
-            stream.write("# Anchor vertex for pose prior\n")
-            stream.write(f"VERTEX_SE3:QUAT {ANCHOR_VERTEX_ID} 0 0 0 0 0 0 1\n")
-            stream.write(
-                "EDGE_SE3:QUAT "
-                f"{ANCHOR_VERTEX_ID} {selected_prior.node_id} "
-                f"{selected_prior.translation_xyz[0]:.15e} {selected_prior.translation_xyz[1]:.15e} {selected_prior.translation_xyz[2]:.15e} "
-                f"{selected_prior.quat_xyzw[0]:.15e} {selected_prior.quat_xyzw[1]:.15e} {selected_prior.quat_xyzw[2]:.15e} {selected_prior.quat_xyzw[3]:.15e} "
-                f"{_format_upper_triangular_information(selected_prior.information)}\n"
-            )
+        # Match the legacy C++ exporter: do not serialize the synthetic anchor
+        # prior back into the output g2o.
 
 
 def generate_pose_graph_png(project_root: Path, g2o_path: Path, output_path: Path, log_fn: LogFn = None) -> None:

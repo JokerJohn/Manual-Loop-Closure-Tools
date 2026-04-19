@@ -6,6 +6,10 @@ This guide targets Ubuntu 20.04 and matches the versions currently used to test 
 
 本说明面向 Ubuntu 20.04，并与当前仓库已经验证过的版本保持一致。当前主推荐路径是 Python-only optimizer，ROS/catkin backend 已降级为 legacy fallback。
 
+For most users, ROS/catkin can be skipped entirely. If Python GTSAM 4.3 is installed, the GUI works normally without any C++ build.
+
+对大多数用户来说，可以完全跳过 ROS/catkin。只要 Python GTSAM 4.3 已安装，GUI 就能在不编译任何 C++ 代码的情况下正常使用。
+
 ## Tested Versions | 已测试版本
 
 | Dependency | Version | Notes |
@@ -35,9 +39,9 @@ cd Mannual-Loop-Closure-Tools
 
 ## 2. Install System Dependencies | 2. 安装系统依赖
 
-Run the helper script if you also want the legacy C++ fallback backend.
+Run the helper script only if you also want the legacy C++ fallback backend.
 
-如果你还需要 legacy C++ fallback backend，可在 ROS Noetic 软件源已经配置好的前提下运行辅助脚本安装系统依赖。
+仅当你还需要 legacy C++ fallback backend 时，才需要在 ROS Noetic 软件源已经配置好的前提下运行辅助脚本安装系统依赖。
 
 ```bash
 bash scripts/install_ubuntu20.sh
@@ -128,6 +132,10 @@ This builds:
 
 - package: `manual_loop_closure_backend`
 - binary: `manual_loop_optimize`
+
+You do not need this step for the default Python workflow. Keep it only if you want a local fallback backend or parity benchmarking.
+
+默认 Python 工作流不需要这一步。只有当你希望保留本地 fallback backend 或做 parity 对照测试时，才需要编译它。
 
 Expected binary path after a successful build:
 

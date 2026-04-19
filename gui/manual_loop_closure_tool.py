@@ -145,7 +145,6 @@ try:
     )
     # ===== BEGIN CHANGE: optimizer backend imports =====
     from manual_loop_closure.optimizer_backend import (  # noqa: E402
-        BACKEND_PREFERENCE_AUTO,
         BACKEND_PREFERENCE_CPP,
         BACKEND_PREFERENCE_PYTHON,
         OptimizerRunOptions,
@@ -633,6 +632,11 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self._graph_change_type_filter = "All Types"
         self._candidate_replace_edge_uid: Optional[int] = None
         self._active_optimizer_backend_name = ""
+        self._active_optimizer_backend_key = BACKEND_PREFERENCE_PYTHON
+        self._optimizer_retry_attempted = False
+        self._pending_optimizer_options: Optional[OptimizerRunOptions] = None
+        self._selected_optimizer_preference = BACKEND_PREFERENCE_PYTHON
+        self._cpp_optimizer_command_cache: Optional[list[str]] = None
 
         self._preview_timer = QtCore.QTimer(self)
         self._preview_timer.setSingleShot(True)
@@ -663,15 +667,21 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
 
         root_layout.addWidget(self._build_loader_group())
 
-        content_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        content_splitter.setChildrenCollapsible(False)
-        content_splitter.addWidget(self._build_plot_panel())
-        content_splitter.addWidget(self._build_cloud_panel())
-        content_splitter.addWidget(self._build_control_scroll_area())
-        content_splitter.setStretchFactor(0, 4)
-        content_splitter.setStretchFactor(1, 5)
-        content_splitter.setStretchFactor(2, 0)
-        content_splitter.setSizes([380, 500, 300])
+        self.content_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.content_splitter.setChildrenCollapsible(False)
+        self.content_splitter.setHandleWidth(10)
+        self.plot_panel = self._build_plot_panel()
+        self.cloud_panel = self._build_cloud_panel()
+        self.control_scroll_area = self._build_control_scroll_area()
+        self.plot_panel.setMinimumWidth(500)
+        self.cloud_panel.setMinimumWidth(360)
+        self.content_splitter.addWidget(self.plot_panel)
+        self.content_splitter.addWidget(self.cloud_panel)
+        self.content_splitter.addWidget(self.control_scroll_area)
+        self.content_splitter.setStretchFactor(0, 6)
+        self.content_splitter.setStretchFactor(1, 5)
+        self.content_splitter.setStretchFactor(2, 0)
+        self.content_splitter.setSizes([560, 460, 320])
 
         bottom_tabs = QtWidgets.QTabWidget()
         bottom_tabs.addTab(self._build_constraint_tab(), "Graph Changes")
@@ -679,7 +689,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
 
         main_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         main_splitter.setChildrenCollapsible(False)
-        main_splitter.addWidget(content_splitter)
+        main_splitter.addWidget(self.content_splitter)
         main_splitter.addWidget(bottom_tabs)
         main_splitter.setStretchFactor(0, 7)
         main_splitter.setStretchFactor(1, 2)
@@ -872,6 +882,27 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             QTabWidget::pane {
                 border: 1px solid #d9e1ea;
                 background: #ffffff;
+            }
+            QTabBar::tab {
+                background: #f8fafc;
+                border: 1px solid #d9e1ea;
+                border-bottom-color: #cfd8e3;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                padding: 4px 10px;
+                min-width: 72px;
+                color: #475569;
+                font-weight: 600;
+            }
+            QTabBar::tab:selected {
+                background: #ffffff;
+                color: #1d4ed8;
+                border-color: #93c5fd;
+                border-bottom-color: #ffffff;
+            }
+            QTabBar::tab:hover:!selected {
+                background: #f1f5f9;
+                border-color: #cbd5e1;
             }
             """
         )
@@ -1095,7 +1126,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.trajectory_view_combo.addItems(["Working", "Original"])
         self.trajectory_view_combo.currentIndexChanged.connect(self._on_trajectory_view_changed)
         header_row.addWidget(self.trajectory_view_combo)
-        self.show_ghost_check = QtWidgets.QCheckBox("Show Other as Ghost")
+        self.show_ghost_check = QtWidgets.QCheckBox("Ghost")
+        self.show_ghost_check.setToolTip("Overlay the other trajectory view as a ghost reference.")
         self.show_ghost_check.setChecked(True)
         self.show_ghost_check.stateChanged.connect(self._on_show_ghost_changed)
         header_row.addWidget(self.show_ghost_check)
@@ -1289,7 +1321,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        scroll_area.setMinimumWidth(260)
+        scroll_area.setMinimumWidth(300)
         scroll_area.setMaximumWidth(360)
         scroll_area.setWidget(self._build_control_panel())
         return scroll_area
@@ -1335,6 +1367,18 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
+        control_tabs = QtWidgets.QTabWidget()
+        control_tabs.setDocumentMode(True)
+        control_tabs.setElideMode(QtCore.Qt.ElideRight)
+        summary_tab = QtWidgets.QWidget()
+        summary_layout = QtWidgets.QVBoxLayout(summary_tab)
+        summary_layout.setContentsMargins(0, 0, 0, 0)
+        summary_layout.setSpacing(6)
+        advanced_tab = QtWidgets.QWidget()
+        advanced_layout = QtWidgets.QVBoxLayout(advanced_tab)
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_layout.setSpacing(6)
+
         selection_group = QtWidgets.QGroupBox("Summary")
         selection_layout = QtWidgets.QGridLayout(selection_group)
         selection_layout.setContentsMargins(8, 8, 8, 8)
@@ -1373,7 +1417,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         selection_layout.addWidget(self._build_summary_card("State", self.gicp_metrics_label), 4, 0, 1, 2)
         selection_layout.setColumnStretch(0, 1)
         selection_layout.setColumnStretch(1, 1)
-        layout.addWidget(selection_group)
+        summary_layout.addWidget(selection_group)
 
         delta_group = QtWidgets.QGroupBox("Manual Delta")
         delta_layout = QtWidgets.QGridLayout(delta_group)
@@ -1391,7 +1435,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         # ===== BEGIN CHANGE: manual align delta sync =====
         for spin in self.delta_spins.values():
             spin.valueChanged.connect(self._on_delta_spin_changed)
-        delta_hint_label = QtWidgets.QLabel("Source-local delta. Viewer drag edits the same seed.")
+        delta_hint_label = QtWidgets.QLabel("Source-local seed. Viewer drag edits the same values.")
         # ===== END CHANGE: manual align delta sync =====
         delta_hint_label.setWordWrap(True)
         delta_layout.addWidget(delta_hint_label, 0, 0, 1, 3)
@@ -1414,7 +1458,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         delta_layout.addWidget(reset_button, 5, 0, 1, 2)
         refresh_button.setText("Preview")
         delta_layout.addWidget(refresh_button, 5, 2)
-        layout.addWidget(delta_group)
+        summary_layout.addWidget(delta_group)
 
         registration_group = QtWidgets.QGroupBox("Registration")
         registration_layout = QtWidgets.QGridLayout(registration_group)
@@ -1491,33 +1535,63 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             registration_layout.addWidget(widget, current_row, 1)
             current_row += 1
 
-        self.variance_t_spins = tuple(
-            self._make_double_spin(
-                step=0.01,
-                minimum=0.0,
-                maximum=100.0,
-                value=value,
-            )
-            for value in OFFICE_DEFAULT_VARIANCE_T
-        )
-        self.variance_r_spins = tuple(
-            self._make_double_spin(
-                step=0.01,
-                minimum=0.0,
-                maximum=100.0,
-                value=value,
-            )
-            for value in OFFICE_DEFAULT_VARIANCE_R_RAD2
-        )
-        registration_layout.addWidget(QtWidgets.QLabel("Variance T [m^2]"), current_row, 0, 1, 2)
-        current_row += 1
-        registration_layout.addWidget(self._pack_vector_grid(("tx", "ty", "tz"), self.variance_t_spins), current_row, 0, 1, 2)
-        current_row += 1
-        registration_layout.addWidget(QtWidgets.QLabel("Variance R [rad^2]"), current_row, 0, 1, 2)
-        current_row += 1
-        registration_layout.addWidget(self._pack_vector_grid(("roll", "pitch", "yaw"), self.variance_r_spins), current_row, 0, 1, 2)
         self._update_target_cloud_mode_controls()
-        layout.addWidget(registration_group)
+        summary_layout.addWidget(registration_group)
+
+        advanced_group = QtWidgets.QGroupBox("Advanced")
+        advanced_group.setToolTip("Optional expert settings. The default values already match the validated parity runs.")
+        advanced_layout_grid = QtWidgets.QGridLayout(advanced_group)
+        advanced_layout_grid.setContentsMargins(8, 8, 8, 8)
+        advanced_layout_grid.setHorizontalSpacing(6)
+        advanced_layout_grid.setVerticalSpacing(4)
+        advanced_note = QtWidgets.QLabel("Python is the default backend. C++ is optional and only used for fallback or parity checks.")
+        advanced_note.setObjectName("SubtleText")
+        advanced_note.setWordWrap(True)
+        advanced_layout_grid.addWidget(advanced_note, 0, 0, 1, 2)
+        self.variance_t_shared_spin = self._make_double_spin(
+            step=0.01,
+            minimum=0.0,
+            maximum=100.0,
+            value=OFFICE_DEFAULT_VARIANCE_T[0],
+        )
+        self.variance_r_shared_spin = self._make_double_spin(
+            step=0.01,
+            minimum=0.0,
+            maximum=100.0,
+            value=OFFICE_DEFAULT_VARIANCE_R_RAD2[0],
+        )
+        advanced_layout_grid.addWidget(QtWidgets.QLabel("Variance T [m^2]"), 1, 0)
+        advanced_layout_grid.addWidget(self.variance_t_shared_spin, 1, 1)
+        advanced_layout_grid.addWidget(QtWidgets.QLabel("Variance R [rad^2]"), 2, 0)
+        advanced_layout_grid.addWidget(self.variance_r_shared_spin, 2, 1)
+
+        self._cpp_optimizer_command_cache = self._resolve_cpp_optimizer_command()
+        self.optimizer_backend_combo = QtWidgets.QComboBox()
+        self.optimizer_backend_combo.addItem("Python", BACKEND_PREFERENCE_PYTHON)
+        if self._cpp_optimizer_command_cache is not None:
+            self.optimizer_backend_combo.addItem("C++", BACKEND_PREFERENCE_CPP)
+        backend_preference = os.environ.get(
+            "MANUAL_LOOP_OPTIMIZER_BACKEND",
+            BACKEND_PREFERENCE_PYTHON,
+        ).lower()
+        backend_index = {
+            BACKEND_PREFERENCE_PYTHON: 0,
+            BACKEND_PREFERENCE_CPP: 1 if self._cpp_optimizer_command_cache is not None else 0,
+        }.get(backend_preference, 0)
+        self.optimizer_backend_combo.setCurrentIndex(backend_index)
+        backend_label = QtWidgets.QLabel("Backend")
+        backend_label.setObjectName("SubtleText")
+        advanced_layout_grid.addWidget(backend_label, 3, 0)
+        advanced_layout_grid.addWidget(self.optimizer_backend_combo, 3, 1)
+        backend_hint = QtWidgets.QLabel(
+            "C++ backend optional: safe to skip if you only use the Python workflow."
+            if self._cpp_optimizer_command_cache is not None
+            else "C++ backend not detected. Python-only usage works normally."
+        )
+        backend_hint.setObjectName("SubtleText")
+        backend_hint.setWordWrap(True)
+        advanced_layout_grid.addWidget(backend_hint, 4, 0, 1, 2)
+        advanced_layout.addWidget(advanced_group)
 
         action_group = QtWidgets.QGroupBox("Actions")
         action_layout = QtWidgets.QVBoxLayout(action_group)
@@ -1547,27 +1621,6 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.undo_button = QtWidgets.QPushButton("Undo")
         self.undo_button.clicked.connect(self.undo_last_change)
         self.undo_button.setEnabled(False)
-        # ===== BEGIN CHANGE: backend selector =====
-        self.optimizer_backend_combo = QtWidgets.QComboBox()
-        self.optimizer_backend_combo.addItem("Auto", BACKEND_PREFERENCE_AUTO)
-        self.optimizer_backend_combo.addItem("Python", BACKEND_PREFERENCE_PYTHON)
-        self.optimizer_backend_combo.addItem("C++", BACKEND_PREFERENCE_CPP)
-        backend_preference = os.environ.get("MANUAL_LOOP_OPTIMIZER_BACKEND", BACKEND_PREFERENCE_AUTO).lower()
-        backend_index = {
-            BACKEND_PREFERENCE_AUTO: 0,
-            BACKEND_PREFERENCE_PYTHON: 1,
-            BACKEND_PREFERENCE_CPP: 2,
-        }.get(backend_preference, 0)
-        self.optimizer_backend_combo.setCurrentIndex(backend_index)
-        backend_row = QtWidgets.QWidget()
-        backend_row_layout = QtWidgets.QHBoxLayout(backend_row)
-        backend_row_layout.setContentsMargins(0, 0, 0, 0)
-        backend_row_layout.setSpacing(6)
-        backend_label = QtWidgets.QLabel("Backend")
-        backend_label.setObjectName("SubtleText")
-        backend_row_layout.addWidget(backend_label)
-        backend_row_layout.addWidget(self.optimizer_backend_combo, 1)
-        # ===== END CHANGE: backend selector =====
         yaw_steps_label = QtWidgets.QLabel("Yaw")
         yaw_steps_label.setObjectName("SubtleText")
         auto_yaw_row = QtWidgets.QWidget()
@@ -1604,16 +1657,19 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self._build_action_section(
                 "Commit",
                 [
-                    (backend_row, 0, 0, 1, 2),
-                    (self.optimize_button, 1, 0, 1, 1),
-                    (self.undo_button, 1, 1, 1, 1),
-                    (self.export_button, 2, 0, 1, 2),
+                    (self.optimize_button, 0, 0, 1, 1),
+                    (self.undo_button, 0, 1, 1, 1),
+                    (self.export_button, 1, 0, 1, 2),
                 ],
             )
         )
-        layout.addWidget(action_group)
+        summary_layout.addWidget(action_group)
 
-        layout.addStretch(1)
+        summary_layout.addStretch(1)
+        advanced_layout.addStretch(1)
+        control_tabs.addTab(summary_tab, "Summary")
+        control_tabs.addTab(advanced_tab, "Advanced")
+        layout.addWidget(control_tabs)
         self._update_edge_action_buttons()
         return container
 
@@ -2621,9 +2677,11 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         )
 
     def _current_variances(self) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+        translation_value = float(self.variance_t_shared_spin.value())
+        rotation_value = float(self.variance_r_shared_spin.value())
         return (
-            tuple(spin.value() for spin in self.variance_t_spins),
-            tuple(spin.value() for spin in self.variance_r_spins),
+            (translation_value, translation_value, translation_value),
+            (rotation_value, rotation_value, rotation_value),
         )
 
     def _selected_target_positions_xy(self) -> Optional[np.ndarray]:
@@ -3568,16 +3626,27 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         preference = str(
             self.optimizer_backend_combo.currentData()
             if hasattr(self, "optimizer_backend_combo")
-            else BACKEND_PREFERENCE_AUTO
+            else BACKEND_PREFERENCE_PYTHON
         )
         python_backend = resolve_python_optimizer_backend(
             script_dir=SCRIPT_DIR,
             project_root=PROJECT_ROOT,
         )
-        cpp_command = self._resolve_cpp_optimizer_command()
+        cpp_command = self._cpp_optimizer_command_cache or self._resolve_cpp_optimizer_command()
+        self._cpp_optimizer_command_cache = cpp_command
 
         if preference == BACKEND_PREFERENCE_PYTHON:
-            return python_backend
+            if python_backend is not None:
+                return python_backend
+            if cpp_command is None:
+                return None
+            return {
+                "key": BACKEND_PREFERENCE_CPP,
+                "display_name": "cpp-fallback",
+                "program": cpp_command[0],
+                "args_prefix": cpp_command[1:],
+                "fallback_from": BACKEND_PREFERENCE_PYTHON,
+            }
         if preference == BACKEND_PREFERENCE_CPP:
             if cpp_command is None:
                 return None
@@ -3588,17 +3657,47 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 "args_prefix": cpp_command[1:],
             }
 
-        if python_backend is not None:
-            return python_backend
-        if cpp_command is None:
-            return None
-        return {
-            "key": BACKEND_PREFERENCE_CPP,
-            "display_name": "cpp-fallback",
-            "program": cpp_command[0],
-            "args_prefix": cpp_command[1:],
-        }
+        return python_backend
     # ===== END CHANGE: optimizer backend resolution =====
+
+    def _start_optimizer_backend(
+        self,
+        backend,
+        options: OptimizerRunOptions,
+        *,
+        fallback_note: Optional[str] = None,
+    ) -> None:
+        if isinstance(backend, dict):
+            program = backend["program"]
+            args = [*backend["args_prefix"], *options.to_cli_args()]
+            backend_name = backend["display_name"]
+            backend_key = backend.get("key", BACKEND_PREFERENCE_CPP)
+        else:
+            program = backend.program
+            args = backend.build_process_args(options)
+            backend_name = backend.display_name
+            backend_key = backend.key
+
+        self._optimizer_process = QtCore.QProcess(self)
+        self._optimizer_process.setProgram(program)
+        self._optimizer_process.setArguments(args)
+        self._optimizer_process.readyReadStandardOutput.connect(self._read_optimizer_stdout)
+        self._optimizer_process.readyReadStandardError.connect(self._read_optimizer_stderr)
+        self._optimizer_process.finished.connect(self._optimizer_finished)
+        self.optimize_button.setEnabled(False)
+        self.export_button.setEnabled(False)
+        self._active_optimizer_backend_name = backend_name
+        self._active_optimizer_backend_key = backend_key
+        if fallback_note:
+            self.append_log(fallback_note)
+        self.append_log(
+            "Starting Optimize Working Graph with "
+            f"{sum(1 for constraint in self.constraints if constraint.enabled)} manual constraints, "
+            f"{len(self._active_disabled_loop_changes())} disabled loop edges, "
+            f"export_map_voxel={self.export_map_voxel_spin.value():.3f} m, "
+            f"optimizer backend={backend_name}."
+        )
+        self._optimizer_process.start()
 
     def run_optimization(self) -> None:
         if self._optimizer_process is not None:
@@ -3620,12 +3719,17 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             )
             return
 
+        self._selected_optimizer_preference = str(
+            self.optimizer_backend_combo.currentData()
+            if hasattr(self, "optimizer_backend_combo")
+            else BACKEND_PREFERENCE_PYTHON
+        )
         backend = self._resolve_optimizer_backend()
         if backend is None:
             self._show_error(
                 "Optimize Working Graph",
-                "No optimizer backend is available. Install Python GTSAM for the Python backend, "
-                "or build the legacy C++ backend / set MANUAL_LOOP_OPTIMIZER_BIN.",
+                "No optimizer backend is available. Install Python GTSAM for the default Python backend. "
+                "The legacy C++ backend is optional and only needed for fallback or parity checks.",
             )
             return
 
@@ -3678,34 +3782,14 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             output_dir=output_dir,
             map_voxel_leaf=float(self.export_map_voxel_spin.value()),
         )
-        if isinstance(backend, dict):
-            program = backend["program"]
-            args = [*backend["args_prefix"], *options.to_cli_args()]
-            backend_name = backend["display_name"]
-        else:
-            program = backend.program
-            args = backend.build_process_args(options)
-            backend_name = backend.display_name
-
-        self._optimizer_process = QtCore.QProcess(self)
-        self._optimizer_process.setProgram(program)
-        self._optimizer_process.setArguments(args)
-        self._optimizer_process.readyReadStandardOutput.connect(self._read_optimizer_stdout)
-        self._optimizer_process.readyReadStandardError.connect(self._read_optimizer_stderr)
-        self._optimizer_process.finished.connect(self._optimizer_finished)
-        self.optimize_button.setEnabled(False)
-        self.export_button.setEnabled(False)
         self._last_output_dir = output_dir
         self._pre_optimize_snapshot = self._capture_undo_snapshot()
-        self._active_optimizer_backend_name = backend_name
-        self.append_log(
-            "Starting Optimize Working Graph with "
-            f"{len(enabled_constraints)} manual constraints, "
-            f"{len(active_disabled_changes)} disabled loop edges, "
-            f"export_map_voxel={self.export_map_voxel_spin.value():.3f} m, "
-            f"optimizer backend={backend_name}."
-        )
-        self._optimizer_process.start()
+        self._pending_optimizer_options = options
+        self._optimizer_retry_attempted = False
+        fallback_note = None
+        if isinstance(backend, dict) and backend.get("fallback_from") == BACKEND_PREFERENCE_PYTHON:
+            fallback_note = "Python backend is unavailable in the current environment. Falling back to the optional C++ backend."
+        self._start_optimizer_backend(backend, options, fallback_note=fallback_note)
 
     def _read_optimizer_stdout(self) -> None:
         if self._optimizer_process is None:
@@ -3737,12 +3821,36 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 self._pending_export_after_optimize = False
                 self.export_final_result()
         else:
+            if (
+                not self._optimizer_retry_attempted
+                and self._selected_optimizer_preference == BACKEND_PREFERENCE_PYTHON
+                and self._active_optimizer_backend_key == BACKEND_PREFERENCE_PYTHON
+                and self._pending_optimizer_options is not None
+            ):
+                cpp_command = self._cpp_optimizer_command_cache or self._resolve_cpp_optimizer_command()
+                self._cpp_optimizer_command_cache = cpp_command
+                if cpp_command is not None:
+                    self.append_log(
+                        "Python optimizer failed. Retrying once with the optional C++ backend."
+                    )
+                    self._optimizer_retry_attempted = True
+                    self._optimizer_process = None
+                    backend = {
+                        "key": BACKEND_PREFERENCE_CPP,
+                        "display_name": "cpp-fallback",
+                        "program": cpp_command[0],
+                        "args_prefix": cpp_command[1:],
+                    }
+                    self._start_optimizer_backend(backend, self._pending_optimizer_options)
+                    return
             self.append_log(
                 f"Optimizer failed ({self._active_optimizer_backend_name}). "
                 f"exit_code={exit_code}, exit_status={int(exit_status)}"
             )
             self._pending_export_after_optimize = False
         self._pre_optimize_snapshot = None
+        self._pending_optimizer_options = None
+        self._optimizer_retry_attempted = False
         self._optimizer_process = None
 
     def _apply_working_optimization_result(self) -> None:

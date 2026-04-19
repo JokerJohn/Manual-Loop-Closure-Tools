@@ -6,6 +6,10 @@ The standalone GUI now prefers a pure Python optimizer backend. To keep the para
 
 独立 GUI 现在优先使用纯 Python 优化后端。为了与当前 C++ 优化器在参数行为和数值输出上保持一致，本仓库默认目标是 **GTSAM 4.3 Python wrapper**，而不是 `pip gtsam 4.2`。
 
+If this Python wrapper is installed, you can use the GUI normally without ROS, catkin, or the legacy C++ optimizer.
+
+只要这个 Python wrapper 已安装，你就可以在不依赖 ROS、catkin 和 legacy C++ optimizer 的情况下正常使用 GUI。
+
 ## Recommended Build Path | 推荐构建路径
 
 ### 1. Install build prerequisites | 安装编译依赖
@@ -25,6 +29,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip setuptools wheel
 pip install -r requirements.txt
+pip install pybind11-stubgen
 ```
 
 ### 3. Build GTSAM 4.3 Python wrappers from source | 从源码构建 GTSAM 4.3 Python wrappers
@@ -44,12 +49,16 @@ cmake .. \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV
 cmake --build . -j$(nproc)
-cmake --install .
+cmake --build . --target python-install
 ```
 
 If your local GTSAM checkout uses slightly different CMake flags for Python, keep the wrapper enabled and make sure the install prefix points to the active virtual environment.
 
 如果你的本地 GTSAM 分支在 Python 相关 CMake 选项上略有差异，保持 Python wrapper 开启即可，同时确保安装前缀指向当前激活的虚拟环境。
+
+`python-install` will generate Python type stubs before packaging the wheel. If it fails with `No module named pybind11_stubgen`, install `pybind11-stubgen` into the active virtual environment first, then rerun `cmake --build . --target python-install`.
+
+`python-install` 在打包 wheel 前会先生成 Python 类型桩。如果出现 `No module named pybind11_stubgen`，先在当前虚拟环境里安装 `pybind11-stubgen`，然后重新执行 `cmake --build . --target python-install`。
 
 ### 4. Verify the wrapper | 验证 Python wrapper
 
@@ -78,18 +87,34 @@ python launch_gui.py --help
 
 ## Backend Preference | 后端选择
 
-The GUI now prefers the Python backend first. If Python GTSAM is missing, it can still fall back to the legacy C++ backend.
+The GUI now defaults to the Python backend. If Python optimization fails at runtime and a legacy C++ binary is available, it can still fall back automatically.
 
-GUI 现在会优先选择 Python backend。若 Python GTSAM 缺失，仍可回退到 legacy C++ backend。
+GUI 现在默认使用 Python backend。若运行时 Python 优化失败且本地存在 legacy C++ 二进制，仍可自动回退。
 
 You can override the preference with:
 
 也可以手动指定优先级：
 
 ```bash
-export MANUAL_LOOP_OPTIMIZER_BACKEND=python   # or cpp / auto
+export MANUAL_LOOP_OPTIMIZER_BACKEND=python   # or cpp
 export MANUAL_LOOP_OPTIMIZER_PYTHON=/abs/path/to/python
 ```
+
+## Parity Validation Snapshot | 一致性验证快照
+
+The current Python backend was benchmarked against the legacy C++ optimizer on multiple real sessions:
+
+当前 Python backend 已在多组真实 session 上与 legacy C++ optimizer 做过基准对照：
+
+| Session | Constraints | Python time [s] | C++ time [s] | TUM max t err [m] | TUM max r err [rad] | g2o max t err [m] | g2o max r err [rad] | Map points Py / C++ |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `office_fs_fastlio_saved` | 1 | 10.193 | 2.096 | 5.20e-09 | 3.11e-06 | 6.85e-05 | 3.27e-06 | 4,850,749 / 4,850,749 |
+| `floor34-1_fs_fastlio_saved` | 1 | 16.335 | 3.827 | 1.00e-09 | 3.56e-06 | 6.83e-05 | 4.50e-06 | 13,771,605 / 13,771,605 |
+| `dr_tunnel_2026_01_24_145439` | 0 | 12.112 | 2.909 | 2.49e-08 | 2.87e-09 | 4.99e-04 | 1.05e-06 | 2,139,789 / 2,139,789 |
+
+The residual `g2o` difference is mainly due to export text precision and quaternion sign-equivalent representations. The optimized TUM trajectories and exported map point counts already match closely enough for the validated workflow.
+
+残余的 `g2o` 差异主要来自导出文本精度和四元数符号等价表示。对当前验证过的工作流来说，优化后的 TUM 轨迹和导出地图点数已经足够一致。
 
 ## Notes | 说明
 

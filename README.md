@@ -92,6 +92,10 @@ source .venv/bin/activate
 python launch_gui.py --session-root /path/to/mapping_session
 ```
 
+For normal use, you can stop here. ROS, catkin, and the legacy C++ optimizer are optional.
+
+对于大多数用户，到这里就够了。ROS、catkin 和 legacy C++ optimizer 都是可选项。
+
 Python GTSAM 4.3 wrapper installation is documented here:
 
 Python GTSAM 4.3 wrapper 的安装说明见：
@@ -117,14 +121,18 @@ python launch_gui.py --session-root /path/to/mapping_session
 
 ## Legacy C++ Fallback Backend | Legacy C++ 回退后端
 
-If Python GTSAM is unavailable, you can still build and use the previous C++ optimizer as a fallback:
+The GUI now defaults to the Python backend. The C++ optimizer is only kept as an optional fallback and parity reference:
 
-如果 Python GTSAM 尚未就绪，仍可编译并使用旧版 C++ optimizer 作为 fallback：
+GUI 现在默认使用 Python backend。C++ optimizer 仅保留为可选 fallback 和 parity 对照路径：
 
 ```bash
 cd ~/my_git/Mannual-Loop-Closure-Tools
 make backend
 ```
+
+If the C++ backend is not installed, the GUI still works normally with the Python path.
+
+如果没有安装 C++ backend，GUI 仍可通过 Python 路径正常工作。
 
 ## Test Data | 测试数据
 
@@ -162,6 +170,28 @@ After optimization, the tool exports a new run directory under the input session
 - `trajectory.pcd`
 - `pose_graph.png`
 - `manual_loop_report.json`
+
+## Python vs C++ Parity Validation | Python 与 C++ 一致性验证
+
+The Python backend was validated against the legacy C++ optimizer on multiple real sessions. The GUI now defaults to Python and only falls back to C++ when Python optimization fails and a legacy binary is available.
+
+Python backend 已在多组真实 session 上与 legacy C++ optimizer 做过一致性验证。GUI 现在默认走 Python，只有在 Python 优化失败且本地存在 legacy 二进制时才会隐藏回退到 C++。
+
+| Session | Constraints | Python time [s] | C++ time [s] | TUM max t err [m] | TUM max r err [rad] | g2o max t err [m] | g2o max r err [rad] | Map points Py / C++ |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `office_fs_fastlio_saved` | 1 | 10.193 | 2.096 | 5.20e-09 | 3.11e-06 | 6.85e-05 | 3.27e-06 | 4,850,749 / 4,850,749 |
+| `floor34-1_fs_fastlio_saved` | 1 | 16.335 | 3.827 | 1.00e-09 | 3.56e-06 | 6.83e-05 | 4.50e-06 | 13,771,605 / 13,771,605 |
+| `dr_tunnel_2026_01_24_145439` | 0 | 12.112 | 2.909 | 2.49e-08 | 2.87e-09 | 4.99e-04 | 1.05e-06 | 2,139,789 / 2,139,789 |
+
+Notes:
+
+- `optimized_poses_tum.txt` is already numerically aligned at the `1e-9 m` to `1e-8 m` translation level and `1e-6 rad` rotation level.
+- The remaining `pose_graph.g2o` difference mainly comes from export text precision and quaternion sign-equivalent representations, not from optimizer mismatch.
+
+说明：
+
+- `optimized_poses_tum.txt` 已在 `1e-9 m` 到 `1e-8 m` 的平移量级和 `1e-6 rad` 的旋转量级上与 C++ 对齐。
+- `pose_graph.g2o` 的残余差异主要来自导出文本精度和四元数符号等价表示，而不是优化结果失配。
 
 ## Repository Layout | 仓库结构
 

@@ -53,7 +53,7 @@ def main() -> int:
     print()
 
     print("[Toolchain]")
-    print(f"  catkin: {run(['catkin', '--version']).splitlines()[0]}")
+    print(f"  catkin (optional): {run(['catkin', '--version']).splitlines()[0]}")
     print(f"  cmake: {run(['cmake', '--version']).splitlines()[0]}")
     print(f"  g++: {run(['g++', '--version']).splitlines()[0]}")
     print()
@@ -73,9 +73,10 @@ def main() -> int:
         REPO_ROOT / "backend" / "catkin_ws" / "install" / "lib" / "manual_loop_closure_backend" / "manual_loop_optimize",
     ]
     print(f"  python optimizer cli: {first_existing([optimizer_candidates[0]])}")
-    print(f"  legacy optimizer binary: {first_existing(optimizer_candidates[1:])}")
-    print("  build command: bash scripts/build_backend_catkin.sh")
+    print(f"  legacy optimizer binary (optional): {first_existing(optimizer_candidates[1:])}")
+    print("  build command (optional): bash scripts/build_backend_catkin.sh")
     print("  GUI launch:    python launch_gui.py --session-root /path/to/session")
+    print("  note:          Python GTSAM is the normal path. ROS/catkin/C++ are optional.")
     return 0
 
 
