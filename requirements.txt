@@ -3,3 +3,5 @@ scipy==1.14.1
 matplotlib==3.10.8
 PyQt5==5.15.10
 open3d==0.19.0
+# Python GTSAM 4.3 is installed separately to preserve parity with the current
+# C++ optimizer. See docs/INSTALL_GTSAM_PYTHON.md.

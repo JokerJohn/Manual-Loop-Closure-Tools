@@ -9,7 +9,7 @@
     <img src="https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
   <img src="https://img.shields.io/badge/python-3.10-blue.svg" alt="Python 3.10" />
-  <img src="https://img.shields.io/badge/ROS-Noetic-22314E.svg" alt="ROS Noetic" />
+  <img src="https://img.shields.io/badge/optimizer-Python%20first-2E8B57.svg" alt="Python-first optimizer" />
   <img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="GNU GPL v3.0 License" />
 </p>
 
@@ -37,12 +37,12 @@ This repository packages the manual loop-closure workflow into a standalone open
 本仓库将手动闭环工作流整理为一个独立的开源项目，包含：
 
 - a PyQt GUI for trajectory inspection and point-cloud-assisted loop editing
-- an offline optimizer backend for exporting new pose graphs and maps
-- helper scripts for virtual environments, backend build, environment checks, and screenshot generation
+- a Python-first offline optimizer backend for exporting new pose graphs and maps
+- helper scripts for virtual environments, Python GTSAM checks, legacy backend build, environment checks, and screenshot generation
 
 - 用于轨迹检查和点云辅助闭环编辑的 PyQt 图形界面
-- 用于导出新位姿图和地图的离线优化后端
-- 用于虚拟环境、后端构建、环境检查和截图生成的辅助脚本
+- 用于导出新位姿图和地图的 Python 优先离线优化后端
+- 用于虚拟环境、Python GTSAM 检查、legacy 后端构建、环境检查和截图生成的辅助脚本
 
 It is designed for mapping results that already contain:
 
@@ -89,9 +89,14 @@ The GUI lets you inspect trajectories, select node pairs or existing loop edges,
 cd ~/my_git/Mannual-Loop-Closure-Tools
 make venv
 source .venv/bin/activate
-make backend
 python launch_gui.py --session-root /path/to/mapping_session
 ```
+
+Python GTSAM 4.3 wrapper installation is documented here:
+
+Python GTSAM 4.3 wrapper 的安装说明见：
+
+- [docs/INSTALL_GTSAM_PYTHON.md](docs/INSTALL_GTSAM_PYTHON.md)
 
 You can also point directly to a `g2o` file:
 
@@ -107,8 +112,18 @@ python launch_gui.py --g2o /path/to/pose_graph.g2o
 cd ~/my_git/Mannual-Loop-Closure-Tools
 conda env create -f environment.yml
 conda activate manual-loop-closure
-make backend
 python launch_gui.py --session-root /path/to/mapping_session
+```
+
+## Legacy C++ Fallback Backend | Legacy C++ 回退后端
+
+If Python GTSAM is unavailable, you can still build and use the previous C++ optimizer as a fallback:
+
+如果 Python GTSAM 尚未就绪，仍可编译并使用旧版 C++ optimizer 作为 fallback：
+
+```bash
+cd ~/my_git/Mannual-Loop-Closure-Tools
+make backend
 ```
 
 ## Test Data | 测试数据
@@ -121,13 +136,13 @@ You can download a sample mapping session for quick validation here:
 
 ## Tested Environment | 当前测试环境
 
-The current repository content was tested with the following dependency versions on Ubuntu 20.04 / ROS Noetic.
+The current repository content was tested with the following dependency versions on Ubuntu 20.04. Python-only usage is the primary path; the ROS/catkin backend is kept as a fallback.
 
-当前仓库内容在 Ubuntu 20.04 / ROS Noetic 环境下使用如下依赖版本进行了测试。
+当前仓库内容在 Ubuntu 20.04 环境下使用如下依赖版本进行了测试。Python-only 是主路径，ROS/catkin backend 保留为 fallback。
 
 | Ubuntu | ROS | Python | catkin_tools | CMake | GCC / G++ |
 |---|---|---|---|---|---|
-| 20.04 | Noetic | 3.10.16 | 0.9.4 | 3.25.0 | 9.4.0 |
+| 20.04 | Noetic (fallback) | 3.10.16 | 0.9.4 | 3.25.0 | 9.4.0 |
 
 | Open3D | PyQt5 | Qt | NumPy | SciPy | Matplotlib | OpenCV | PCL | GeographicLib | GTSAM |
 |---|---|---|---|---|---|---|---|---|---|
@@ -174,6 +189,7 @@ Mannual-Loop-Closure-Tools/
 ## Documentation | 文档
 
 - [Installation Guide / 安装说明](docs/INSTALL.md)
+- [Python GTSAM 4.3 / Python GTSAM 4.3 安装](docs/INSTALL_GTSAM_PYTHON.md)
 - [Tool Manual / 工具说明](docs/TOOL_README.md)
 - [Contributing / 贡献说明](CONTRIBUTING.md)
 - [Changelog / 版本记录](CHANGELOG.md)
@@ -184,6 +200,7 @@ Mannual-Loop-Closure-Tools/
 make help
 make check
 make env-check
+make optimizer-help
 make backend
 make assets SESSION_ROOT=/path/to/session
 ```

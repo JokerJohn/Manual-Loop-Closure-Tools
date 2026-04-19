@@ -2,9 +2,9 @@
 
 ## Scope | 适用范围
 
-This guide targets Ubuntu 20.04 + ROS Noetic and matches the versions currently used to test this repository.
+This guide targets Ubuntu 20.04 and matches the versions currently used to test this repository. The Python-only optimizer path is the primary recommendation, while the ROS/catkin backend is now a legacy fallback.
 
-本说明面向 Ubuntu 20.04 + ROS Noetic，并与当前仓库已经验证过的版本保持一致。
+本说明面向 Ubuntu 20.04，并与当前仓库已经验证过的版本保持一致。当前主推荐路径是 Python-only optimizer，ROS/catkin backend 已降级为 legacy fallback。
 
 ## Tested Versions | 已测试版本
 
@@ -16,7 +16,7 @@ This guide targets Ubuntu 20.04 + ROS Noetic and matches the versions currently 
 | NumPy | 1.24.4 | GUI |
 | SciPy | 1.14.1 | GUI / transforms |
 | Matplotlib | 3.10.8 | Trajectory view |
-| ROS | Noetic | Backend build/runtime |
+| ROS | Noetic (fallback) | Legacy backend build/runtime |
 | catkin_tools | 0.9.4 | Backend build |
 | GCC | 9.4.0 | Backend build |
 | CMake | 3.25.0 | Backend build |
@@ -35,9 +35,9 @@ cd Mannual-Loop-Closure-Tools
 
 ## 2. Install System Dependencies | 2. 安装系统依赖
 
-Run the helper script after your ROS Noetic apt source is available.
+Run the helper script if you also want the legacy C++ fallback backend.
 
-在 ROS Noetic 软件源已经配置好的前提下，运行辅助脚本安装系统依赖。
+如果你还需要 legacy C++ fallback backend，可在 ROS Noetic 软件源已经配置好的前提下运行辅助脚本安装系统依赖。
 
 ```bash
 bash scripts/install_ubuntu20.sh
@@ -87,25 +87,35 @@ conda env create -f environment.yml
 conda activate manual-loop-closure
 ```
 
-## 4. Install GTSAM | 4. 安装 GTSAM
+## 4. Install Python GTSAM 4.3 | 4. 安装 Python GTSAM 4.3
 
-The backend optimizer was tested with `GTSAM 4.3.0`.
+The Python optimizer is designed to match the current C++ backend semantics and was tested against the `GTSAM 4.3` line.
 
-后端优化器当前使用 `GTSAM 4.3.0` 进行了测试。
+Python 优化器按当前 C++ backend 语义对齐设计，并以 `GTSAM 4.3` 线为目标进行了测试。
 
-If `GTSAMConfig.cmake` is already available under `/usr/local/lib/cmake/GTSAM` or another CMake prefix, you can skip this step.
+Use the dedicated installation notes here:
 
-如果系统里已经存在 `/usr/local/lib/cmake/GTSAM` 或其他 CMake 前缀下的 `GTSAMConfig.cmake`，可以跳过此步骤。
+请参考这里的专用安装说明：
 
-Otherwise, install GTSAM 4.2+ and make sure CMake can find it through one of:
+- [INSTALL_GTSAM_PYTHON.md](INSTALL_GTSAM_PYTHON.md)
 
-否则请安装 GTSAM 4.2+，并确保 CMake 能通过以下任一方式找到它：
+## 5. Launch the GUI (Python-first path) | 5. 启动 GUI（Python 主路径）
 
-- `CMAKE_PREFIX_PATH`
-- `GTSAM_DIR`
-- a default system location such as `/usr/local/lib/cmake/GTSAM`
+```bash
+cd ~/my_git/Mannual-Loop-Closure-Tools
+source .venv/bin/activate
+python launch_gui.py --session-root /path/to/mapping_session
+```
 
-## 5. Build the Backend Optimizer | 5. 编译后端优化器
+Or:
+
+或者：
+
+```bash
+python launch_gui.py --g2o /path/to/pose_graph.g2o
+```
+
+## 6. Optional: Build the Legacy C++ Backend | 6. 可选：编译 Legacy C++ Backend
 
 ```bash
 cd ~/my_git/Mannual-Loop-Closure-Tools
@@ -127,31 +137,15 @@ Expected binary path after a successful build:
 backend/catkin_ws/devel/lib/manual_loop_closure_backend/manual_loop_optimize
 ```
 
-## 6. Verify the Environment | 6. 检查环境
+## 7. Verify the Environment | 7. 检查环境
 
 ```bash
 make env-check
 ```
 
-This script prints Python package versions, ROS / catkin presence, common GTSAM CMake paths, and backend build hints.
+This script prints Python package versions, Python GTSAM availability, ROS / catkin presence, common GTSAM CMake paths, and backend build hints.
 
-该脚本会打印 Python 包版本、ROS / catkin 状态、常见 GTSAM CMake 路径以及后端构建提示。
-
-## 7. Launch the GUI | 7. 启动 GUI
-
-```bash
-cd ~/my_git/Mannual-Loop-Closure-Tools
-source .venv/bin/activate
-python launch_gui.py --session-root /path/to/mapping_session
-```
-
-Or:
-
-或者：
-
-```bash
-python launch_gui.py --g2o /path/to/pose_graph.g2o
-```
+该脚本会打印 Python 包版本、Python GTSAM 可用性、ROS / catkin 状态、常见 GTSAM CMake 路径以及后端构建提示。
 
 ## 8. Expected Input Layout | 8. 输入目录结构
 
@@ -181,10 +175,12 @@ The tool also supports sessions where `pose_graph.g2o` and `optimized_poses_tum.
 
 ### Backend optimizer not found | 找不到后端优化器
 
-- Re-run `bash scripts/build_backend_catkin.sh`
+- Install Python GTSAM 4.3 first if you want the Python backend.
+- Re-run `bash scripts/build_backend_catkin.sh` only when you need the legacy fallback backend.
 - Or set `MANUAL_LOOP_OPTIMIZER_BIN=/absolute/path/to/manual_loop_optimize`
 
-- 重新执行 `bash scripts/build_backend_catkin.sh`
+- 如果你希望走 Python backend，先安装 Python GTSAM 4.3。
+- 仅当你需要 legacy fallback backend 时，再重新执行 `bash scripts/build_backend_catkin.sh`
 - 或手动设置 `MANUAL_LOOP_OPTIMIZER_BIN=/absolute/path/to/manual_loop_optimize`
 
 ### GTSAM not found by CMake | CMake 找不到 GTSAM
@@ -200,4 +196,5 @@ export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
 ## Related Documentation | 相关文档
 
 - [Tool Manual / 工具说明](TOOL_README.md)
+- [Python GTSAM 4.3 安装 / Python GTSAM 4.3](INSTALL_GTSAM_PYTHON.md)
 - [Project Overview / 项目总览](../README.md)

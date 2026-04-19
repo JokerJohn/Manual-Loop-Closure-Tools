@@ -143,6 +143,15 @@ try:
         VIEW_PRESET_SIDE_Y,
         VIEW_PRESET_TOP,
     )
+    # ===== BEGIN CHANGE: optimizer backend imports =====
+    from manual_loop_closure.optimizer_backend import (  # noqa: E402
+        BACKEND_PREFERENCE_AUTO,
+        BACKEND_PREFERENCE_CPP,
+        BACKEND_PREFERENCE_PYTHON,
+        OptimizerRunOptions,
+        resolve_python_optimizer_backend,
+    )
+    # ===== END CHANGE: optimizer backend imports =====
     from manual_loop_closure.pcd_io import PcdValidationError, validate_keyframe_numbering  # noqa: E402
     from manual_loop_closure.registration import build_delta_transform  # noqa: E402
 except ModuleNotFoundError as exc:
@@ -623,6 +632,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self._graph_change_status_filter = "All Status"
         self._graph_change_type_filter = "All Types"
         self._candidate_replace_edge_uid: Optional[int] = None
+        self._active_optimizer_backend_name = ""
 
         self._preview_timer = QtCore.QTimer(self)
         self._preview_timer.setSingleShot(True)
@@ -1537,6 +1547,27 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.undo_button = QtWidgets.QPushButton("Undo")
         self.undo_button.clicked.connect(self.undo_last_change)
         self.undo_button.setEnabled(False)
+        # ===== BEGIN CHANGE: backend selector =====
+        self.optimizer_backend_combo = QtWidgets.QComboBox()
+        self.optimizer_backend_combo.addItem("Auto", BACKEND_PREFERENCE_AUTO)
+        self.optimizer_backend_combo.addItem("Python", BACKEND_PREFERENCE_PYTHON)
+        self.optimizer_backend_combo.addItem("C++", BACKEND_PREFERENCE_CPP)
+        backend_preference = os.environ.get("MANUAL_LOOP_OPTIMIZER_BACKEND", BACKEND_PREFERENCE_AUTO).lower()
+        backend_index = {
+            BACKEND_PREFERENCE_AUTO: 0,
+            BACKEND_PREFERENCE_PYTHON: 1,
+            BACKEND_PREFERENCE_CPP: 2,
+        }.get(backend_preference, 0)
+        self.optimizer_backend_combo.setCurrentIndex(backend_index)
+        backend_row = QtWidgets.QWidget()
+        backend_row_layout = QtWidgets.QHBoxLayout(backend_row)
+        backend_row_layout.setContentsMargins(0, 0, 0, 0)
+        backend_row_layout.setSpacing(6)
+        backend_label = QtWidgets.QLabel("Backend")
+        backend_label.setObjectName("SubtleText")
+        backend_row_layout.addWidget(backend_label)
+        backend_row_layout.addWidget(self.optimizer_backend_combo, 1)
+        # ===== END CHANGE: backend selector =====
         yaw_steps_label = QtWidgets.QLabel("Yaw")
         yaw_steps_label.setObjectName("SubtleText")
         auto_yaw_row = QtWidgets.QWidget()
@@ -1573,9 +1604,10 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self._build_action_section(
                 "Commit",
                 [
-                    (self.optimize_button, 0, 0, 1, 1),
-                    (self.undo_button, 0, 1, 1, 1),
-                    (self.export_button, 1, 0, 1, 2),
+                    (backend_row, 0, 0, 1, 2),
+                    (self.optimize_button, 1, 0, 1, 1),
+                    (self.undo_button, 1, 1, 1, 1),
+                    (self.export_button, 2, 0, 1, 2),
                 ],
             )
         )
@@ -3496,7 +3528,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self.cloud_view.clear_scene()
             self._preview_scene_key = None
 
-    def _resolve_optimizer_command(self) -> Optional[list[str]]:
+    # ===== BEGIN CHANGE: optimizer backend resolution =====
+    def _resolve_cpp_optimizer_command(self) -> Optional[list[str]]:
         env_command = os.environ.get("MANUAL_LOOP_OPTIMIZER_BIN")
         if env_command:
             env_path = Path(env_command).expanduser().resolve()
@@ -3531,6 +3564,42 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             return ["rosrun", "manual_loop_closure_backend", "manual_loop_optimize"]
         return None
 
+    def _resolve_optimizer_backend(self):
+        preference = str(
+            self.optimizer_backend_combo.currentData()
+            if hasattr(self, "optimizer_backend_combo")
+            else BACKEND_PREFERENCE_AUTO
+        )
+        python_backend = resolve_python_optimizer_backend(
+            script_dir=SCRIPT_DIR,
+            project_root=PROJECT_ROOT,
+        )
+        cpp_command = self._resolve_cpp_optimizer_command()
+
+        if preference == BACKEND_PREFERENCE_PYTHON:
+            return python_backend
+        if preference == BACKEND_PREFERENCE_CPP:
+            if cpp_command is None:
+                return None
+            return {
+                "key": BACKEND_PREFERENCE_CPP,
+                "display_name": "cpp-fallback",
+                "program": cpp_command[0],
+                "args_prefix": cpp_command[1:],
+            }
+
+        if python_backend is not None:
+            return python_backend
+        if cpp_command is None:
+            return None
+        return {
+            "key": BACKEND_PREFERENCE_CPP,
+            "display_name": "cpp-fallback",
+            "program": cpp_command[0],
+            "args_prefix": cpp_command[1:],
+        }
+    # ===== END CHANGE: optimizer backend resolution =====
+
     def run_optimization(self) -> None:
         if self._optimizer_process is not None:
             self._show_error("Optimize Working Graph", "An optimization process is already running.")
@@ -3551,12 +3620,12 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             )
             return
 
-        command = self._resolve_optimizer_command()
-        if command is None:
+        backend = self._resolve_optimizer_backend()
+        if backend is None:
             self._show_error(
                 "Optimize Working Graph",
-                "Failed to locate manual_loop_optimize. Build the backend first, or set "
-                "MANUAL_LOOP_OPTIMIZER_BIN to the optimizer binary path.",
+                "No optimizer backend is available. Install Python GTSAM for the Python backend, "
+                "or build the legacy C++ backend / set MANUAL_LOOP_OPTIMIZER_BIN.",
             )
             return
 
@@ -3600,25 +3669,26 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             for constraint in enabled_constraints:
                 writer.writerow(constraint.csv_row())
 
-        args = command[1:] + [
-            "--session-root",
-            str(self.session_paths.session_root),
-            "--g2o",
-            str(edited_g2o_path),
-            "--tum",
-            str(self.original_trajectory.path),
-            "--keyframe-dir",
-            str(self.session_paths.keyframe_dir),
-            "--constraints-csv",
-            str(csv_path),
-            "--output-dir",
-            str(output_dir),
-            "--map-voxel-leaf",
-            f"{self.export_map_voxel_spin.value():.6f}",
-        ]
+        options = OptimizerRunOptions(
+            session_root=self.session_paths.session_root,
+            g2o_path=edited_g2o_path,
+            tum_path=self.original_trajectory.path,
+            keyframe_dir=self.session_paths.keyframe_dir,
+            constraints_csv=csv_path,
+            output_dir=output_dir,
+            map_voxel_leaf=float(self.export_map_voxel_spin.value()),
+        )
+        if isinstance(backend, dict):
+            program = backend["program"]
+            args = [*backend["args_prefix"], *options.to_cli_args()]
+            backend_name = backend["display_name"]
+        else:
+            program = backend.program
+            args = backend.build_process_args(options)
+            backend_name = backend.display_name
 
         self._optimizer_process = QtCore.QProcess(self)
-        self._optimizer_process.setProgram(command[0])
+        self._optimizer_process.setProgram(program)
         self._optimizer_process.setArguments(args)
         self._optimizer_process.readyReadStandardOutput.connect(self._read_optimizer_stdout)
         self._optimizer_process.readyReadStandardError.connect(self._read_optimizer_stderr)
@@ -3627,11 +3697,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.export_button.setEnabled(False)
         self._last_output_dir = output_dir
         self._pre_optimize_snapshot = self._capture_undo_snapshot()
+        self._active_optimizer_backend_name = backend_name
         self.append_log(
             "Starting Optimize Working Graph with "
             f"{len(enabled_constraints)} manual constraints, "
             f"{len(active_disabled_changes)} disabled loop edges, "
-            f"export_map_voxel={self.export_map_voxel_spin.value():.3f} m."
+            f"export_map_voxel={self.export_map_voxel_spin.value():.3f} m, "
+            f"optimizer backend={backend_name}."
         )
         self._optimizer_process.start()
 
@@ -3653,7 +3725,10 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.optimize_button.setEnabled(True)
         self._update_session_status_widgets()
         if exit_status == QtCore.QProcess.NormalExit and exit_code == 0:
-            self.append_log(f"Optimizer finished successfully. Output: {self._last_output_dir}")
+            self.append_log(
+                f"Optimizer finished successfully ({self._active_optimizer_backend_name}). "
+                f"Output: {self._last_output_dir}"
+            )
             if self._pre_optimize_snapshot is not None:
                 self._undo_stack.append(self._pre_optimize_snapshot)
                 self.undo_button.setEnabled(True)
@@ -3663,7 +3738,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 self.export_final_result()
         else:
             self.append_log(
-                f"Optimizer failed. exit_code={exit_code}, exit_status={int(exit_status)}"
+                f"Optimizer failed ({self._active_optimizer_backend_name}). "
+                f"exit_code={exit_code}, exit_status={int(exit_status)}"
             )
             self._pending_export_after_optimize = False
         self._pre_optimize_snapshot = None

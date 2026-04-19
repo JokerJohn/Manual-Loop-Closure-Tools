@@ -48,7 +48,7 @@ def main() -> int:
     print()
 
     print("[Python packages]")
-    for name in ["open3d", "PyQt5", "numpy", "scipy", "matplotlib"]:
+    for name in ["open3d", "PyQt5", "numpy", "scipy", "matplotlib", "gtsam"]:
         print(f"  {name}: {import_version(name)}")
     print()
 
@@ -68,10 +68,12 @@ def main() -> int:
 
     print("[Backend build hints]")
     optimizer_candidates = [
+        REPO_ROOT / "gui" / "manual_loop_closure" / "python_optimizer" / "cli.py",
         REPO_ROOT / "backend" / "catkin_ws" / "devel" / "lib" / "manual_loop_closure_backend" / "manual_loop_optimize",
         REPO_ROOT / "backend" / "catkin_ws" / "install" / "lib" / "manual_loop_closure_backend" / "manual_loop_optimize",
     ]
-    print(f"  optimizer binary: {first_existing(optimizer_candidates)}")
+    print(f"  python optimizer cli: {first_existing([optimizer_candidates[0]])}")
+    print(f"  legacy optimizer binary: {first_existing(optimizer_candidates[1:])}")
     print("  build command: bash scripts/build_backend_catkin.sh")
     print("  GUI launch:    python launch_gui.py --session-root /path/to/session")
     return 0
