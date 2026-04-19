@@ -10,7 +10,7 @@
   </a>
   <img src="https://img.shields.io/badge/python-3.10-blue.svg" alt="Python 3.10" />
   <img src="https://img.shields.io/badge/ROS-Noetic-22314E.svg" alt="ROS Noetic" />
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License" />
+  <img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="GNU GPL v3.0 License" />
 </p>
 
 Offline manual loop closure editing and optimization tools for LiDAR mapping pose graphs.
@@ -218,6 +218,6 @@ If you use this repository in academic work, please also cite the MS-Mapping pap
 
 ## License | 许可
 
-This standalone repository is released under the MIT License.
+This standalone repository is released under the GNU General Public License v3.0 (GPLv3).
 
-本独立仓库采用 MIT License。
+本独立仓库采用 GNU General Public License v3.0（GPLv3）。
