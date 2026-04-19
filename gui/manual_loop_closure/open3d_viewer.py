@@ -8,7 +8,7 @@ import numpy as np
 import open3d as o3d
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-DEFAULT_TOP_DOWN_YAW_DEG = 0.0
+DEFAULT_TOP_DOWN_YAW_DEG = -90.0
 DEFAULT_TOP_DOWN_PITCH_DEG = 89.0
 
 INTERACTION_MODE_CAMERA = "camera"
@@ -133,6 +133,7 @@ def _trajectory_colors(values: np.ndarray) -> np.ndarray:
 class EmbeddedOpen3DWidget(QtWidgets.QWidget):
     manual_align_changed = QtCore.pyqtSignal(object)
     manual_align_status = QtCore.pyqtSignal(str)
+    camera_preset_changed = QtCore.pyqtSignal(str)
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -150,6 +151,7 @@ class EmbeddedOpen3DWidget(QtWidgets.QWidget):
         self._camera_distance = 5.0
         self._camera_yaw_deg = DEFAULT_TOP_DOWN_YAW_DEG
         self._camera_pitch_deg = DEFAULT_TOP_DOWN_PITCH_DEG
+        self._camera_preset = VIEW_PRESET_TOP
         self._camera_ready = False
 
         self._display_mode = "preview"
@@ -211,7 +213,26 @@ class EmbeddedOpen3DWidget(QtWidgets.QWidget):
         self._camera_distance = max(0.3, float(state.distance))
         self._camera_yaw_deg = float(state.yaw_deg)
         self._camera_pitch_deg = max(-89.0, min(89.0, float(state.pitch_deg)))
+        self._set_camera_preset(self._preset_from_angles(self._camera_yaw_deg, self._camera_pitch_deg))
         self._camera_ready = True
+
+    def _preset_from_angles(self, yaw_deg: float, pitch_deg: float) -> str:
+        presets = {
+            VIEW_PRESET_TOP: (-90.0, 89.0),
+            VIEW_PRESET_SIDE_Y: (-90.0, 0.0),
+            VIEW_PRESET_SIDE_X: (0.0, 0.0),
+        }
+        for preset, (preset_yaw, preset_pitch) in presets.items():
+            if abs(yaw_deg - preset_yaw) < 1e-6 and abs(pitch_deg - preset_pitch) < 1e-6:
+                return preset
+        return ""
+
+    def _set_camera_preset(self, preset: str) -> None:
+        normalized = preset if preset in {VIEW_PRESET_TOP, VIEW_PRESET_SIDE_Y, VIEW_PRESET_SIDE_X} else ""
+        if normalized == self._camera_preset:
+            return
+        self._camera_preset = normalized
+        self.camera_preset_changed.emit(normalized)
 
     def set_interaction_mode(self, mode: str) -> None:
         normalized = mode.strip().lower()
@@ -273,6 +294,7 @@ class EmbeddedOpen3DWidget(QtWidgets.QWidget):
 
         self._camera_yaw_deg = yaw_deg
         self._camera_pitch_deg = pitch_deg
+        self._set_camera_preset(normalized)
         self._camera_ready = True
         if self._scene is not None and self._renderer is not None:
             self._apply_camera()
@@ -355,6 +377,7 @@ class EmbeddedOpen3DWidget(QtWidgets.QWidget):
         self._camera_distance = max(2.5 * extent, 3.0)
         self._camera_yaw_deg = DEFAULT_TOP_DOWN_YAW_DEG
         self._camera_pitch_deg = DEFAULT_TOP_DOWN_PITCH_DEG
+        self._set_camera_preset(VIEW_PRESET_TOP)
         self._camera_ready = True
         self._apply_camera()
         self._render_now()
@@ -592,6 +615,7 @@ class EmbeddedOpen3DWidget(QtWidgets.QWidget):
             self._camera_yaw_deg -= delta.x() * 0.35
             self._camera_pitch_deg += delta.y() * 0.35
             self._camera_pitch_deg = max(-89.0, min(89.0, self._camera_pitch_deg))
+            self._set_camera_preset(self._preset_from_angles(self._camera_yaw_deg, self._camera_pitch_deg))
         elif self._drag_mode == "pan":
             right_vec, up_vec = self._camera_basis()
             pan_scale = max(self._camera_distance, 1.0) * 0.0015

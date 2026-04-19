@@ -820,6 +820,29 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 border-color: #93c5fd;
                 color: #1d4ed8;
             }
+            QFrame#PrimarySegmentedControl {
+                background: #eef6ff;
+                border: 1px solid #bfd5f7;
+                border-radius: 10px;
+            }
+            QToolButton[segmentRole="segmentedPrimary"] {
+                background: transparent;
+                border: 1px solid transparent;
+                border-radius: 8px;
+                padding: 5px 12px;
+                min-height: 26px;
+                font-weight: 700;
+                color: #31527c;
+            }
+            QToolButton[segmentRole="segmentedPrimary"]:hover {
+                background: #dbeafe;
+                border-color: #93c5fd;
+            }
+            QToolButton[segmentRole="segmentedPrimary"]:checked {
+                background: #ffffff;
+                border-color: #60a5fa;
+                color: #1d4ed8;
+            }
             QHeaderView::section {
                 background: #edf3f9;
                 border: none;
@@ -829,10 +852,10 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             QLabel#StatusBadge {
                 background: #eef2f7;
                 border: 1px solid #d6dde6;
-                border-radius: 8px;
-                padding: 1px 7px;
+                border-radius: 7px;
+                padding: 1px 5px;
                 font-weight: 600;
-                font-size: 11px;
+                font-size: 10px;
             }
             QLabel#PanelLegend {
                 background: #f8fafc;
@@ -853,17 +876,21 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             QFrame#SummaryCard {
                 background: #f8fafc;
                 border: 1px solid #e2e8f0;
-                border-radius: 8px;
+                border-radius: 7px;
             }
             QLabel#SummaryCardTitle {
-                color: #64748b;
-                font-size: 11px;
+                color: #475569;
+                background: #eef2f7;
+                border: 1px solid #d6dde6;
+                border-radius: 6px;
+                padding: 0px 5px;
+                font-size: 9px;
                 font-weight: 600;
-                letter-spacing: 0.2px;
+                letter-spacing: 0.1px;
             }
             QLabel#SummaryCardBody {
                 color: #0f172a;
-                font-size: 12px;
+                font-size: 10px;
             }
             QFrame#ActionSection {
                 background: #f8fafc;
@@ -1131,35 +1158,18 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.show_ghost_check.setChecked(True)
         self.show_ghost_check.stateChanged.connect(self._on_show_ghost_changed)
         header_row.addWidget(self.show_ghost_check)
-        self.working_rev_badge = QtWidgets.QLabel("Rev 0")
-        self.working_rev_badge.setObjectName("StatusBadge")
-        header_row.addWidget(self.working_rev_badge)
-        self.session_state_badge = QtWidgets.QLabel("Clean")
-        self.session_state_badge.setObjectName("StatusBadge")
-        header_row.addWidget(self.session_state_badge)
-        self.change_summary_badge = QtWidgets.QLabel("M+0 · D0")
-        self.change_summary_badge.setObjectName("StatusBadge")
-        header_row.addWidget(self.change_summary_badge)
-        header_row.addStretch(1)
-        self.trajectory_view_info_label = QtWidgets.QLabel("P0 · L0 · edit")
-        self.trajectory_view_info_label.setObjectName("SubtleText")
-        header_row.addWidget(self.trajectory_view_info_label)
-        layout.addLayout(header_row)
-
-        actions_row = QtWidgets.QHBoxLayout()
-        actions_row.setSpacing(6)
         self.pick_nodes_button = QtWidgets.QToolButton()
-        self.pick_nodes_button.setText("Pick Nodes")
+        self.pick_nodes_button.setText("Nodes")
         self.pick_nodes_button.setCheckable(True)
         self.pick_nodes_button.setChecked(True)
-        self.pick_nodes_button.setProperty("segmentRole", "segmented")
+        self.pick_nodes_button.setProperty("segmentRole", "segmentedPrimary")
         self.pick_nodes_button.setToolTip("Exit pan/zoom mode and pick a source-target node pair.")
         self.pick_nodes_button.clicked.connect(lambda: self._set_pick_mode("nodes"))
 
         self.pick_edges_button = QtWidgets.QToolButton()
-        self.pick_edges_button.setText("Pick Edges")
+        self.pick_edges_button.setText("Edges")
         self.pick_edges_button.setCheckable(True)
-        self.pick_edges_button.setProperty("segmentRole", "segmented")
+        self.pick_edges_button.setProperty("segmentRole", "segmentedPrimary")
         self.pick_edges_button.setToolTip("Exit pan/zoom mode and inspect an existing or manual edge.")
         self.pick_edges_button.clicked.connect(lambda: self._set_pick_mode("edges"))
 
@@ -1169,16 +1179,27 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         mode_group.addButton(self.pick_edges_button)
 
         segmented_control = QtWidgets.QFrame()
-        segmented_control.setObjectName("SegmentedControl")
+        segmented_control.setObjectName("PrimarySegmentedControl")
         segmented_layout = QtWidgets.QHBoxLayout(segmented_control)
         segmented_layout.setContentsMargins(2, 2, 2, 2)
-        segmented_layout.setSpacing(3)
+        segmented_layout.setSpacing(2)
         segmented_layout.addWidget(self.pick_nodes_button)
         segmented_layout.addWidget(self.pick_edges_button)
-
-        actions_row.addWidget(segmented_control)
-        actions_row.addStretch(1)
-        layout.addLayout(actions_row)
+        header_row.addWidget(segmented_control)
+        header_row.addStretch(1)
+        self.working_rev_badge = QtWidgets.QLabel("R0")
+        self.working_rev_badge.setObjectName("StatusBadge")
+        header_row.addWidget(self.working_rev_badge)
+        self.session_state_badge = QtWidgets.QLabel("OK")
+        self.session_state_badge.setObjectName("StatusBadge")
+        header_row.addWidget(self.session_state_badge)
+        self.change_summary_badge = QtWidgets.QLabel("M0 D0")
+        self.change_summary_badge.setObjectName("StatusBadge")
+        header_row.addWidget(self.change_summary_badge)
+        self.trajectory_view_info_label = QtWidgets.QLabel("P0 · L0 · edit")
+        self.trajectory_view_info_label.setObjectName("SubtleText")
+        header_row.addWidget(self.trajectory_view_info_label)
+        layout.addLayout(header_row)
 
         self.plot_help_label = QtWidgets.QLabel("Working edits. Original compares.")
         self.plot_help_label.setObjectName("SubtleText")
@@ -1205,6 +1226,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.cloud_view = EmbeddedOpen3DWidget(group)
         self.cloud_view.manual_align_changed.connect(self._on_manual_align_changed)
         self.cloud_view.manual_align_status.connect(self._on_manual_align_status)
+        self.cloud_view.camera_preset_changed.connect(self._on_camera_preset_changed)
 
         controls_row = QtWidgets.QHBoxLayout()
         controls_row.setSpacing(5)
@@ -1260,18 +1282,26 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.cloud_drag_mode_combo.currentIndexChanged.connect(self._on_cloud_interaction_changed)
         controls_row.addWidget(self.cloud_drag_mode_combo)
         controls_row.addStretch(1)
-        self.top_view_button = QtWidgets.QPushButton("Top")
-        self.top_view_button.clicked.connect(lambda: self.cloud_view.set_view_preset(VIEW_PRESET_TOP))
-        self.top_view_button.setMaximumWidth(52)
-        controls_row.addWidget(self.top_view_button)
-        self.side_y_view_button = QtWidgets.QPushButton("Side-Y")
-        self.side_y_view_button.clicked.connect(lambda: self.cloud_view.set_view_preset(VIEW_PRESET_SIDE_Y))
-        self.side_y_view_button.setMaximumWidth(62)
-        controls_row.addWidget(self.side_y_view_button)
-        self.side_x_view_button = QtWidgets.QPushButton("Side-X")
-        self.side_x_view_button.clicked.connect(lambda: self.cloud_view.set_view_preset(VIEW_PRESET_SIDE_X))
-        self.side_x_view_button.setMaximumWidth(62)
-        controls_row.addWidget(self.side_x_view_button)
+        controls_row.addWidget(QtWidgets.QLabel("View"))
+        self.camera_preset_buttons: dict[str, QtWidgets.QToolButton] = {}
+        camera_preset_frame = QtWidgets.QFrame()
+        camera_preset_frame.setObjectName("SegmentedControl")
+        camera_preset_layout = QtWidgets.QHBoxLayout(camera_preset_frame)
+        camera_preset_layout.setContentsMargins(2, 2, 2, 2)
+        camera_preset_layout.setSpacing(2)
+        for text, preset in (
+            ("Top", VIEW_PRESET_TOP),
+            ("Side-Y", VIEW_PRESET_SIDE_Y),
+            ("Side-X", VIEW_PRESET_SIDE_X),
+        ):
+            button = QtWidgets.QToolButton()
+            button.setText(text)
+            button.setCheckable(True)
+            button.setProperty("segmentRole", "segmented")
+            button.clicked.connect(lambda _checked=False, value=preset: self.cloud_view.set_view_preset(value))
+            camera_preset_layout.addWidget(button)
+            self.camera_preset_buttons[preset] = button
+        controls_row.addWidget(camera_preset_frame)
         self.manual_align_translation_step_spin = self._make_double_spin(
             step=0.01,
             minimum=0.01,
@@ -1299,6 +1329,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.reset_camera_button.clicked.connect(self.cloud_view.reset_camera)
         controls_row.addWidget(self.reset_camera_button)
         layout.addLayout(controls_row)
+        self._on_camera_preset_changed(VIEW_PRESET_TOP)
 
         self.manual_align_status_label = QtWidgets.QLabel("View mode · wheel zoom")
         self.manual_align_status_label.setObjectName("SubtleText")
@@ -1316,24 +1347,29 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.cloud_view, stretch=1)
         return group
 
-    def _build_control_scroll_area(self) -> QtWidgets.QScrollArea:
+    def _build_control_scroll_area(self) -> QtWidgets.QWidget:
+        panel = self._build_control_panel()
+        panel.setMinimumWidth(300)
+        panel.setMaximumWidth(360)
+        return panel
+
+    def _wrap_control_tab(self, content: QtWidgets.QWidget) -> QtWidgets.QScrollArea:
         scroll_area = QtWidgets.QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        scroll_area.setMinimumWidth(300)
-        scroll_area.setMaximumWidth(360)
-        scroll_area.setWidget(self._build_control_panel())
+        scroll_area.setWidget(content)
         return scroll_area
 
     def _build_summary_card(self, title: str, body_label: QtWidgets.QLabel) -> QtWidgets.QFrame:
         card = QtWidgets.QFrame()
         card.setObjectName("SummaryCard")
         card_layout = QtWidgets.QVBoxLayout(card)
-        card_layout.setContentsMargins(8, 6, 8, 6)
-        card_layout.setSpacing(3)
+        card_layout.setContentsMargins(6, 4, 6, 4)
+        card_layout.setSpacing(1)
         title_label = QtWidgets.QLabel(title)
         title_label.setObjectName("SummaryCardTitle")
+        title_label.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
         card_layout.addWidget(title_label)
         card_layout.addWidget(body_label)
         return card
@@ -1381,9 +1417,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
 
         selection_group = QtWidgets.QGroupBox("Summary")
         selection_layout = QtWidgets.QGridLayout(selection_group)
-        selection_layout.setContentsMargins(8, 8, 8, 8)
-        selection_layout.setHorizontalSpacing(6)
-        selection_layout.setVerticalSpacing(6)
+        selection_layout.setContentsMargins(6, 6, 6, 6)
+        selection_layout.setHorizontalSpacing(4)
+        selection_layout.setVerticalSpacing(4)
+        self.pair_label = QtWidgets.QLabel("none")
+        self.pair_label.setWordWrap(True)
+        self.pair_label.setTextFormat(QtCore.Qt.RichText)
+        self.pair_label.setObjectName("SummaryCardBody")
         self.source_label = QtWidgets.QLabel("none")
         self.source_label.setWordWrap(True)
         self.source_label.setObjectName("CompactValue")
@@ -1409,21 +1449,21 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.gicp_metrics_label.setWordWrap(True)
         self.gicp_metrics_label.setTextFormat(QtCore.Qt.RichText)
         self.gicp_metrics_label.setObjectName("SummaryCardBody")
-        selection_layout.addWidget(self._build_summary_card("Graph", self.working_graph_label), 0, 0, 1, 2)
-        selection_layout.addWidget(self._build_summary_card("Src", self.source_label), 1, 0)
-        selection_layout.addWidget(self._build_summary_card("Tgt", self.target_label), 1, 1)
-        selection_layout.addWidget(self._build_summary_card("Edge", self.selected_edge_label), 2, 0, 1, 2)
-        selection_layout.addWidget(self._build_summary_card("Submap", self.target_map_label), 3, 0, 1, 2)
-        selection_layout.addWidget(self._build_summary_card("State", self.gicp_metrics_label), 4, 0, 1, 2)
+        selection_layout.addWidget(self._build_summary_card("Graph", self.working_graph_label), 0, 0)
+        selection_layout.addWidget(self._build_summary_card("State", self.gicp_metrics_label), 0, 1)
+        selection_layout.addWidget(self._build_summary_card("Pair", self.pair_label), 1, 0, 1, 2)
+        selection_layout.addWidget(self._build_summary_card("Edge", self.selected_edge_label), 2, 0)
+        selection_layout.addWidget(self._build_summary_card("Map", self.target_map_label), 2, 1)
         selection_layout.setColumnStretch(0, 1)
         selection_layout.setColumnStretch(1, 1)
         summary_layout.addWidget(selection_group)
 
-        delta_group = QtWidgets.QGroupBox("Manual Delta")
+        delta_group = QtWidgets.QGroupBox("Delta")
+        delta_group.setToolTip("Source-local seed. Viewer drag edits the same values.")
         delta_layout = QtWidgets.QGridLayout(delta_group)
-        delta_layout.setContentsMargins(8, 8, 8, 8)
-        delta_layout.setHorizontalSpacing(6)
-        delta_layout.setVerticalSpacing(4)
+        delta_layout.setContentsMargins(7, 7, 7, 7)
+        delta_layout.setHorizontalSpacing(5)
+        delta_layout.setVerticalSpacing(3)
         self.delta_spins = {
             "x": self._make_double_spin(step=0.1, minimum=-1000.0, maximum=1000.0, value=0.0),
             "y": self._make_double_spin(step=0.1, minimum=-1000.0, maximum=1000.0, value=0.0),
@@ -1432,19 +1472,14 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             "pitch": self._make_double_spin(step=1.0, minimum=-180.0, maximum=180.0, value=0.0),
             "yaw": self._make_double_spin(step=1.0, minimum=-180.0, maximum=180.0, value=0.0),
         }
-        # ===== BEGIN CHANGE: manual align delta sync =====
         for spin in self.delta_spins.values():
             spin.valueChanged.connect(self._on_delta_spin_changed)
-        delta_hint_label = QtWidgets.QLabel("Source-local seed. Viewer drag edits the same values.")
-        # ===== END CHANGE: manual align delta sync =====
-        delta_hint_label.setWordWrap(True)
-        delta_layout.addWidget(delta_hint_label, 0, 0, 1, 3)
         for column, key in enumerate(("x", "y", "z")):
-            delta_layout.addWidget(QtWidgets.QLabel(key.upper()), 1, column)
-            delta_layout.addWidget(self.delta_spins[key], 2, column)
-        for column, key in enumerate(("roll", "pitch", "yaw")):
-            delta_layout.addWidget(QtWidgets.QLabel(key.capitalize()), 3, column)
-            delta_layout.addWidget(self.delta_spins[key], 4, column)
+            delta_layout.addWidget(QtWidgets.QLabel(key), 0, column)
+            delta_layout.addWidget(self.delta_spins[key], 1, column)
+        for column, (label_text, key) in enumerate((("r", "roll"), ("p", "pitch"), ("y", "yaw"))):
+            delta_layout.addWidget(QtWidgets.QLabel(label_text), 2, column)
+            delta_layout.addWidget(self.delta_spins[key], 3, column)
         reset_button = QtWidgets.QPushButton("Reset Delta")
         reset_button.clicked.connect(self._reset_delta)
         refresh_button = QtWidgets.QPushButton("Refresh Preview")
@@ -1455,15 +1490,15 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.auto_yaw_steps_spin.setToolTip("Sweep evenly-spaced yaw seeds across 0-360 degrees.")
         self.auto_yaw_button = QtWidgets.QPushButton("Auto Yaw Sweep")
         self.auto_yaw_button.clicked.connect(self.run_auto_yaw_sweep)
-        delta_layout.addWidget(reset_button, 5, 0, 1, 2)
+        delta_layout.addWidget(reset_button, 4, 0, 1, 2)
         refresh_button.setText("Preview")
-        delta_layout.addWidget(refresh_button, 5, 2)
+        delta_layout.addWidget(refresh_button, 4, 2)
         summary_layout.addWidget(delta_group)
 
         registration_group = QtWidgets.QGroupBox("Registration")
         registration_layout = QtWidgets.QGridLayout(registration_group)
-        registration_layout.setContentsMargins(8, 8, 8, 8)
-        registration_layout.setHorizontalSpacing(6)
+        registration_layout.setContentsMargins(7, 7, 7, 7)
+        registration_layout.setHorizontalSpacing(5)
         registration_layout.setVerticalSpacing(4)
         self.target_cloud_mode_combo = QtWidgets.QComboBox()
         self.target_cloud_mode_combo.addItem("Temporal Window", TARGET_CLOUD_MODE_TEMPORAL_WINDOW)
@@ -1505,35 +1540,36 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.max_iter_spin = QtWidgets.QSpinBox()
         self.max_iter_spin.setRange(1, 500)
         self.max_iter_spin.setValue(OFFICE_DEFAULT_MAX_ITERATIONS)
-        self.export_map_voxel_spin = self._make_double_spin(
-            step=0.05,
-            minimum=0.0,
-            maximum=5.0,
-            value=0.0,
-        )
-        self.target_neighbors_label = QtWidgets.QLabel()
-        self.target_min_gap_label = QtWidgets.QLabel("Min Time Gap [s]")
-        scalar_rows = [
-            ("Target Cloud Mode", self.target_cloud_mode_combo),
-            (None, self.target_neighbors_spin),
-            (None, self.target_min_gap_spin),
-            ("Target Map Voxel [m]", self.target_map_voxel_spin),
-            ("Voxel Size [m]", self.voxel_spin),
-            ("Max Search Radius [m]", self.max_corr_spin),
-            ("Max Iterations", self.max_iter_spin),
-            ("Export Map Voxel [m]", self.export_map_voxel_spin),
-        ]
-        current_row = 0
-        for label_text, widget in scalar_rows:
-            if widget is self.target_neighbors_spin:
-                label_widget = self.target_neighbors_label
-            elif widget is self.target_min_gap_spin:
-                label_widget = self.target_min_gap_label
-            else:
-                label_widget = QtWidgets.QLabel(label_text)
-            registration_layout.addWidget(label_widget, current_row, 0)
-            registration_layout.addWidget(widget, current_row, 1)
-            current_row += 1
+        self.target_neighbors_label = QtWidgets.QLabel("Nbr")
+        self.target_neighbors_label.setToolTip("Temporal window radius or RS spatial neighbor count.")
+        self.target_min_gap_label = QtWidgets.QLabel("Gap[s]")
+        self.target_min_gap_label.setToolTip("Minimum source-target time gap, only used by RS Spatial Submap.")
+        mode_label = QtWidgets.QLabel("Mode")
+        mode_label.setToolTip("Target cloud construction mode.")
+        target_map_voxel_label = QtWidgets.QLabel("TgtVoxel")
+        target_map_voxel_label.setToolTip("Downsample size for the target map preview.")
+        voxel_label = QtWidgets.QLabel("Voxel")
+        voxel_label.setToolTip("Source and target voxel size for GICP.")
+        radius_label = QtWidgets.QLabel("Radius")
+        radius_label.setToolTip("Maximum search radius for correspondence lookup.")
+        iter_label = QtWidgets.QLabel("Iter")
+        iter_label.setToolTip("Maximum GICP iterations.")
+        registration_layout.addWidget(mode_label, 0, 0)
+        registration_layout.addWidget(self.target_cloud_mode_combo, 0, 1, 1, 3)
+        registration_layout.addWidget(self.target_neighbors_label, 1, 0)
+        registration_layout.addWidget(self.target_neighbors_spin, 1, 1)
+        registration_layout.addWidget(self.target_min_gap_label, 1, 2)
+        registration_layout.addWidget(self.target_min_gap_spin, 1, 3)
+        registration_layout.addWidget(target_map_voxel_label, 2, 0)
+        registration_layout.addWidget(self.target_map_voxel_spin, 2, 1)
+        registration_layout.addWidget(voxel_label, 2, 2)
+        registration_layout.addWidget(self.voxel_spin, 2, 3)
+        registration_layout.addWidget(radius_label, 3, 0)
+        registration_layout.addWidget(self.max_corr_spin, 3, 1)
+        registration_layout.addWidget(iter_label, 3, 2)
+        registration_layout.addWidget(self.max_iter_spin, 3, 3)
+        registration_layout.setColumnStretch(1, 1)
+        registration_layout.setColumnStretch(3, 1)
 
         self._update_target_cloud_mode_controls()
         summary_layout.addWidget(registration_group)
@@ -1560,10 +1596,20 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             maximum=100.0,
             value=OFFICE_DEFAULT_VARIANCE_R_RAD2[0],
         )
+        self.export_map_voxel_spin = self._make_double_spin(
+            step=0.05,
+            minimum=0.0,
+            maximum=5.0,
+            value=0.0,
+        )
         advanced_layout_grid.addWidget(QtWidgets.QLabel("Variance T [m^2]"), 1, 0)
         advanced_layout_grid.addWidget(self.variance_t_shared_spin, 1, 1)
         advanced_layout_grid.addWidget(QtWidgets.QLabel("Variance R [rad^2]"), 2, 0)
         advanced_layout_grid.addWidget(self.variance_r_shared_spin, 2, 1)
+        map_voxel_label = QtWidgets.QLabel("MapVoxel")
+        map_voxel_label.setToolTip("Final map export voxel size.")
+        advanced_layout_grid.addWidget(map_voxel_label, 3, 0)
+        advanced_layout_grid.addWidget(self.export_map_voxel_spin, 3, 1)
 
         self._cpp_optimizer_command_cache = self._resolve_cpp_optimizer_command()
         self.optimizer_backend_combo = QtWidgets.QComboBox()
@@ -1581,8 +1627,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.optimizer_backend_combo.setCurrentIndex(backend_index)
         backend_label = QtWidgets.QLabel("Backend")
         backend_label.setObjectName("SubtleText")
-        advanced_layout_grid.addWidget(backend_label, 3, 0)
-        advanced_layout_grid.addWidget(self.optimizer_backend_combo, 3, 1)
+        advanced_layout_grid.addWidget(backend_label, 4, 0)
+        advanced_layout_grid.addWidget(self.optimizer_backend_combo, 4, 1)
         backend_hint = QtWidgets.QLabel(
             "C++ backend optional: safe to skip if you only use the Python workflow."
             if self._cpp_optimizer_command_cache is not None
@@ -1590,20 +1636,20 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         )
         backend_hint.setObjectName("SubtleText")
         backend_hint.setWordWrap(True)
-        advanced_layout_grid.addWidget(backend_hint, 4, 0, 1, 2)
+        advanced_layout_grid.addWidget(backend_hint, 5, 0, 1, 2)
         advanced_layout.addWidget(advanced_group)
 
         action_group = QtWidgets.QGroupBox("Actions")
         action_layout = QtWidgets.QVBoxLayout(action_group)
-        action_layout.setContentsMargins(8, 8, 8, 8)
-        action_layout.setSpacing(6)
-        self.run_gicp_button = QtWidgets.QPushButton("Run GICP")
+        action_layout.setContentsMargins(7, 7, 7, 7)
+        action_layout.setSpacing(5)
+        self.run_gicp_button = QtWidgets.QPushButton("GICP")
         self.run_gicp_button.setProperty("buttonRole", "primary")
         self.run_gicp_button.clicked.connect(self.run_gicp)
-        self.accept_button = QtWidgets.QPushButton("Add Manual")
+        self.accept_button = QtWidgets.QPushButton("Add")
         self.accept_button.clicked.connect(self.accept_constraint)
         self.accept_button.setEnabled(False)
-        self.replace_edge_button = QtWidgets.QPushButton("Replace Edge")
+        self.replace_edge_button = QtWidgets.QPushButton("Replace")
         self.replace_edge_button.clicked.connect(self.replace_selected_edge)
         self.replace_edge_button.setEnabled(False)
         self.disable_edge_button = QtWidgets.QPushButton("Disable")
@@ -1612,7 +1658,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.restore_edge_button.clicked.connect(self.restore_selected_edge)
         self.remove_manual_button = QtWidgets.QPushButton("Remove")
         self.remove_manual_button.clicked.connect(self.remove_selected_manual_constraint)
-        self.optimize_button = QtWidgets.QPushButton("Optimize")
+        self.optimize_button = QtWidgets.QPushButton("Optim")
         self.optimize_button.setProperty("buttonRole", "primary")
         self.optimize_button.clicked.connect(self.run_optimization)
         self.export_button = QtWidgets.QPushButton("Export")
@@ -1631,7 +1677,6 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         auto_yaw_row_layout.addWidget(self.auto_yaw_steps_spin)
         self.auto_yaw_button.setText("Auto Yaw")
         auto_yaw_row_layout.addWidget(self.auto_yaw_button, 1)
-
         action_layout.addWidget(
             self._build_action_section(
                 "Match",
@@ -1667,8 +1712,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
 
         summary_layout.addStretch(1)
         advanced_layout.addStretch(1)
-        control_tabs.addTab(summary_tab, "Summary")
-        control_tabs.addTab(advanced_tab, "Advanced")
+        control_tabs.addTab(self._wrap_control_tab(summary_tab), "Summary")
+        control_tabs.addTab(self._wrap_control_tab(advanced_tab), "Advanced")
         layout.addWidget(control_tabs)
         self._update_edge_action_buttons()
         return container
@@ -1879,9 +1924,9 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
     def _update_session_status_widgets(self) -> None:
         manual_active = sum(1 for constraint in self.constraints if constraint.enabled)
         disabled_active = sum(1 for change in self.disabled_loop_changes.values() if change.enabled)
-        self.working_rev_badge.setText(f"Rev {self._working_revision}")
-        self.session_state_badge.setText("Dirty" if self._session_dirty else "Clean")
-        self.change_summary_badge.setText(f"M+{manual_active} · D{disabled_active}")
+        self.working_rev_badge.setText(f"R{self._working_revision}")
+        self.session_state_badge.setText("Dirty" if self._session_dirty else "OK")
+        self.change_summary_badge.setText(f"M{manual_active} D{disabled_active}")
         if self._session_dirty:
             self.session_state_badge.setStyleSheet(
                 "background:#fff4db;border:1px solid #f2c46d;border-radius:10px;padding:2px 8px;font-weight:600;color:#8a5300;"
@@ -1917,9 +1962,9 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         mode = self._current_target_cloud_mode()
         temporal_mode = mode == TARGET_CLOUD_MODE_TEMPORAL_WINDOW
         self.target_neighbors_label.setText(
-            "Target Window Radius"
+            "Win"
             if temporal_mode
-            else "Target Neighbors"
+            else "Nbr"
         )
         self.target_min_gap_spin.setEnabled(not temporal_mode)
         self.target_min_gap_label.setEnabled(not temporal_mode)
@@ -1998,6 +2043,11 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
     def _on_manual_align_status(self, text: str) -> None:
         self.manual_align_status_label.setText(text)
         self.manual_align_status_label.setVisible("Edit" in text)
+
+    def _on_camera_preset_changed(self, preset: str) -> None:
+        for preset_name, button in self.camera_preset_buttons.items():
+            with QtCore.QSignalBlocker(button):
+                button.setChecked(preset_name == preset)
 
     def _set_delta_spin_values(self, values: np.ndarray) -> None:
         blockers = [QtCore.QSignalBlocker(spin) for spin in self.delta_spins.values()]
@@ -2403,6 +2453,29 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             f"{self.trajectory.positions_xyz[self.target_id, 1]:.3f}, "
             f"{self.trajectory.positions_xyz[self.target_id, 2]:.3f}"
         )
+        if self.source_id is None or self.target_id is None or self.trajectory is None:
+            self.pair_label.setText("none")
+            self.pair_label.setToolTip("none")
+        else:
+            self.pair_label.setText(
+                f"T {self.target_id} · S {self.source_id}"
+                f"<br><span style='color:#64748b;font-size:11px'>"
+                f"{self.trajectory.positions_xyz[self.target_id, 0]:.2f}, {self.trajectory.positions_xyz[self.target_id, 1]:.2f} → "
+                f"{self.trajectory.positions_xyz[self.source_id, 0]:.2f}, {self.trajectory.positions_xyz[self.source_id, 1]:.2f}"
+                "</span>"
+            )
+            self.pair_label.setToolTip(
+                "target:\n"
+                f"node={self.target_id}\nt={self.trajectory.timestamps[self.target_id]:.6f}s\n"
+                f"xyz={self.trajectory.positions_xyz[self.target_id, 0]:.3f}, "
+                f"{self.trajectory.positions_xyz[self.target_id, 1]:.3f}, "
+                f"{self.trajectory.positions_xyz[self.target_id, 2]:.3f}\n\n"
+                "source:\n"
+                f"node={self.source_id}\nt={self.trajectory.timestamps[self.source_id]:.6f}s\n"
+                f"xyz={self.trajectory.positions_xyz[self.source_id, 0]:.3f}, "
+                f"{self.trajectory.positions_xyz[self.source_id, 1]:.3f}, "
+                f"{self.trajectory.positions_xyz[self.source_id, 2]:.3f}"
+            )
         if self.selected_edge_ref is None:
             self.selected_edge_label.setText("none")
             self.selected_edge_label.setToolTip("none")
@@ -2418,10 +2491,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                     else "Odom" if edge.edge_type == "odom"
                     else "Manual"
                 )
-                self.selected_edge_label.setText(
-                    f"{type_text} · {edge.target_id}->{edge.source_id}"
-                    f"<br><span style='color:#64748b;font-size:11px'>state={state}</span>"
-                )
+                self.selected_edge_label.setText(f"{type_text} · {edge.target_id}->{edge.source_id} · {state}")
                 self.selected_edge_label.setToolTip(edge.summary())
 
     def _update_preview_summary(self, preview: Optional[RegistrationPreview]) -> None:
@@ -2447,7 +2517,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             clip_text = "n/a"
         self.target_map_label.setText(
             f"{mode_text} · {preview.target_frame_count}f · {preview.target_point_count} pts"
-            f"<br><span style='color:#64748b;font-size:11px'>range {range_text} · boundary {clip_text} · gap {filter_text}</span>"
+            f"<br><span style='color:#64748b;font-size:11px'>r {range_text} · b {clip_text} · g {filter_text}</span>"
         )
         self.target_map_label.setToolTip(
             f"mode={mode_text}\nframes={preview.target_frame_count}\nrange={range_text}\n"
@@ -2467,8 +2537,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         pose = self.trajectory.positions_xyz[node_id]
         timestamp = self.trajectory.timestamps[node_id]
         return (
-            f"{node_id} · ({pose[0]:.2f}, {pose[1]:.2f}, {pose[2]:.2f})"
-            f"<br><span style='color:#64748b;font-size:11px'>t={timestamp:.3f}s</span>"
+            f"{node_id} · ({pose[0]:.2f}, {pose[1]:.2f}, {pose[2]:.2f}) · t={timestamp:.3f}s"
         )
 
     def _refresh_plot(self, *, preserve_view: bool) -> None:

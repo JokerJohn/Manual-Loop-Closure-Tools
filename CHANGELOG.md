@@ -30,4 +30,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Reserved for future changes.
+### Changed
+
+- Made the standalone GUI Python-first by default while keeping the legacy C++ optimizer as an optional fallback path.
+- Added validated Python/C++ parity reporting for multiple sessions and documented the observed pose, graph, map-point, and runtime differences.
+- Refined the trajectory panel to emphasize `Nodes` / `Edges` selection, reduce status-badge prominence, and compact the toolbar and control rows.
+- Reworked the right-side control area into persistent `Summary` / `Advanced` tabs with per-tab scrolling so the tab header remains visible while browsing long panels.
+- Compressed the `Summary`, `Delta`, and `Registration` layouts, moved `MapVoxel` into `Advanced`, and simplified action labels for a denser but clearer control column.
+- Improved the point-cloud viewer defaults with a top-down camera preset, active preset highlighting, and synchronized local/repo UI behavior.
+
+### Validated
+
+- `python3 -m py_compile gui/manual_loop_closure_tool.py gui/manual_loop_closure/open3d_viewer.py`
+- `QT_QPA_PLATFORM=offscreen python3 launch_gui.py --help`
+- Offscreen widget instantiation for the updated trajectory, tabbed control panel, and camera preset controls
