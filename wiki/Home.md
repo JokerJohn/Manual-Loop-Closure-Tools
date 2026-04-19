@@ -6,6 +6,10 @@ This wiki is designed as a practical operator guide for the standalone manual lo
 
 本 Wiki 面向实际使用者，重点介绍独立手动闭环工具的操作流程、图编辑逻辑、优化后端行为和常见问题。
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/JokerJohn/Mannual-Loop-Closure-Tools/main/assets/screenshots/edge-selected.png" alt="Manual Loop Closure Tools screenshot" width="82%" />
+</p>
+
 ## Start Here | 从这里开始
 
 - [Quick Start](Quick-Start.md)
@@ -43,9 +47,23 @@ It lets you:
 
 ## Core Editing Actions | 核心编辑动作
 
-| Add Manual Loop | Replace Existing Loop | Disable Existing Loop |
-|---|---|---|
-| ![Add loop](../assets/add_loopsx3.gif) | ![Replace loop](../assets/replace_loopx3.gif) | ![Disable loop](../assets/disable_loop.gif) |
+### Add Manual Loop | 新增手工闭环边
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/JokerJohn/Mannual-Loop-Closure-Tools/main/assets/add_loopsx3.gif" alt="Add loop demo" width="82%" />
+</p>
+
+### Replace Existing Loop | 替换已有闭环边
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/JokerJohn/Mannual-Loop-Closure-Tools/main/assets/replace_loopx3.gif" alt="Replace loop demo" width="82%" />
+</p>
+
+### Disable Existing Loop | 禁用已有闭环边
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/JokerJohn/Mannual-Loop-Closure-Tools/main/assets/disable_loop.gif" alt="Disable loop demo" width="82%" />
+</p>
 
 ## Suggested Reading Order | 建议阅读顺序
 
@@ -55,10 +73,9 @@ It lets you:
 4. [Optimization Backends](Optimization-Backends.md)
 5. [Troubleshooting](Troubleshooting.md)
 
-## Notes | 说明
+## Related Repository Links | 仓库链接
 
-- The repository currently ships the wiki content as regular Markdown under `wiki/`.
-- If GitHub Wiki is enabled later, these pages can be copied there with minimal adjustment.
-
-- 当前仓库将 Wiki 内容以普通 Markdown 文件形式保存在 `wiki/` 目录下。
-- 若后续启用 GitHub Wiki，可直接将这些页面迁移过去使用。
+- [Main README](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/README.md)
+- [Installation Guide](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/docs/INSTALL.md)
+- [Python GTSAM 4.3](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/docs/INSTALL_GTSAM_PYTHON.md)
+- [Tool Manual](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/docs/TOOL_README.md)

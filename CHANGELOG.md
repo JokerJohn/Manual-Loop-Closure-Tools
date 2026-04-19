@@ -40,6 +40,8 @@ All notable changes to this project will be documented in this file.
 - Improved the point-cloud viewer defaults with a top-down camera preset, active preset highlighting, and synchronized local/repo UI behavior.
 - Added animated README demos for adding, replacing, and disabling loop edges.
 - Added a repository-hosted wiki content set under `wiki/` with a GitHub-Wiki-ready page structure.
+- Enlarged the main README screenshot and switched feature demos from a three-column layout to full-width single-column sections for clearer viewing.
+- Updated the wiki content so it can be published directly to GitHub Wiki with sidebar navigation and GitHub-safe asset links.
 
 ### Validated
 

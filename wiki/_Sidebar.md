@@ -12,8 +12,8 @@
 
 ## Key Assets
 
-- [Main README](../README.md)
-- [Installation Guide](../docs/INSTALL.md)
-- [Python GTSAM 4.3](../docs/INSTALL_GTSAM_PYTHON.md)
-- [Tool Manual](../docs/TOOL_README.md)
-- [Changelog](../CHANGELOG.md)
+- [Main README](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/README.md)
+- [Installation Guide](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/docs/INSTALL.md)
+- [Python GTSAM 4.3](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/docs/INSTALL_GTSAM_PYTHON.md)
+- [Tool Manual](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/docs/TOOL_README.md)
+- [Changelog](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/blob/main/CHANGELOG.md)

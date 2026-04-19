@@ -55,8 +55,7 @@ It is designed for mapping results that already contain:
 ## Screenshots | 界面截图
 
 <p align="center">
-  <img src="assets/screenshots/session-loaded.png" alt="Session loaded screenshot" width="48%" />
-  <img src="assets/screenshots/edge-selected.png" alt="Edge selected screenshot" width="48%" />
+  <img src="assets/screenshots/edge-selected.png" alt="Edge selected screenshot" width="82%" />
 </p>
 
 ## Workflow | 工作流
@@ -71,30 +70,35 @@ The GUI lets you inspect trajectories, select node pairs or existing loop edges,
 
 ## Feature Demos | 功能动图
 
-<table>
-  <tr>
-    <td width="33%" align="center"><strong>Add Loop</strong><br/>新增闭环边</td>
-    <td width="33%" align="center"><strong>Replace Loop</strong><br/>替换已有闭环边</td>
-    <td width="33%" align="center"><strong>Disable Loop</strong><br/>禁用已有闭环边</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="assets/add_loopsx3.gif" alt="Add loop demo" width="100%" /></td>
-    <td align="center"><img src="assets/replace_loopx3.gif" alt="Replace loop demo" width="100%" /></td>
-    <td align="center"><img src="assets/disable_loop.gif" alt="Disable loop demo" width="100%" /></td>
-  </tr>
-</table>
+### Add Loop | 新增闭环边
 
-The three animations above highlight the most common graph-editing actions in the working session:
+<p align="center">
+  <img src="assets/add_loopsx3.gif" alt="Add loop demo" width="82%" />
+</p>
 
-上面的三段动图展示了工作会话中最常用的图编辑动作：
+Add a new manual loop after validating a GICP result.
 
-- add a new manual loop after validating a GICP result
-- replace an existing loop edge with a better manual registration result
-- temporarily disable an existing loop edge before re-optimization
+在确认 GICP 结果后新增一条手工闭环边。
 
-- 在确认 GICP 结果后新增一条手工闭环边
-- 用更可靠的手工配准结果替换已有闭环边
-- 在重新优化前临时禁用已有闭环边
+### Replace Loop | 替换已有闭环边
+
+<p align="center">
+  <img src="assets/replace_loopx3.gif" alt="Replace loop demo" width="82%" />
+</p>
+
+Replace an existing loop edge with a better manual registration result.
+
+用更可靠的手工配准结果替换已有闭环边。
+
+### Disable Loop | 禁用已有闭环边
+
+<p align="center">
+  <img src="assets/disable_loop.gif" alt="Disable loop demo" width="82%" />
+</p>
+
+Temporarily disable an existing loop edge before re-optimization.
+
+在重新优化前临时禁用已有闭环边。
 
 ## Key Features | 主要功能
 
