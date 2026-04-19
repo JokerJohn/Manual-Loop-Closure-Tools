@@ -598,6 +598,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle("Manual Loop Closure Tool")
         self.setMinimumSize(760, 560)
+        self._settings = QtCore.QSettings("JokerJohn", "ManualLoopClosureTools")
 
         self.session_paths: Optional[SessionPaths] = None
         self.original_pose_graph: Optional[PoseGraphData] = None
@@ -639,12 +640,15 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self._build_ui()
         self._apply_initial_window_geometry()
         self._apply_styles()
+        self._configure_plot_toolbar()
+        self._configure_button_cursors()
 
-        if initial_session_root is not None:
-            self.session_root_edit.setText(str(initial_session_root))
-        if initial_g2o_path is not None:
-            self.g2o_edit.setText(str(initial_g2o_path))
+        self._restore_input_history(
+            initial_session_root=initial_session_root,
+            initial_g2o_path=initial_g2o_path,
+        )
 
+        self._update_plot_help_state()
         self._update_trajectory_legend_label()
         self._update_cloud_display_controls()
 
@@ -715,11 +719,37 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 min-height: 24px;
             }
             QPushButton:hover, QToolButton:hover {
-                background: #edf3f9;
+                background: #eef4ff;
+                border-color: #9db6d8;
+            }
+            QPushButton:pressed, QToolButton:pressed {
+                background: #dbeafe;
+                border-color: #60a5fa;
+                color: #0f172a;
+            }
+            QPushButton:checked, QToolButton:checked {
+                background: #dbeafe;
+                border-color: #60a5fa;
+                color: #1d4ed8;
+                font-weight: 600;
             }
             QPushButton:disabled, QToolButton:disabled {
                 color: #98a4b3;
                 background: #f8fafc;
+            }
+            QPushButton[buttonRole="primary"], QToolButton[buttonRole="primary"] {
+                background: #eff6ff;
+                border-color: #93c5fd;
+                color: #1d4ed8;
+                font-weight: 600;
+            }
+            QPushButton[buttonRole="primary"]:hover, QToolButton[buttonRole="primary"]:hover {
+                background: #dbeafe;
+                border-color: #60a5fa;
+            }
+            QPushButton[buttonRole="primary"]:pressed, QToolButton[buttonRole="primary"]:pressed {
+                background: #bfdbfe;
+                border-color: #3b82f6;
             }
             QHeaderView::section {
                 background: #edf3f9;
@@ -785,6 +815,137 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             """
         )
 
+    def _configure_button_cursors(self) -> None:
+        pointing_hand = QtGui.QCursor(QtCore.Qt.PointingHandCursor)
+        for button in self.findChildren(QtWidgets.QPushButton):
+            button.setCursor(pointing_hand)
+        for button in self.findChildren(QtWidgets.QToolButton):
+            button.setCursor(pointing_hand)
+
+    def _configure_plot_toolbar(self) -> None:
+        if not hasattr(self, "toolbar") or self.toolbar is None:
+            return
+
+        self.toolbar.setIconSize(QtCore.QSize(18, 18))
+        removable_actions = {"Subplots", "Customize"}
+        for action in list(self.toolbar.actions()):
+            text = action.text().strip()
+            if text in removable_actions:
+                self.toolbar.removeAction(action)
+                continue
+            action.triggered.connect(self._on_plot_toolbar_action_triggered)
+
+        for button in self.toolbar.findChildren(QtWidgets.QToolButton):
+            button.setAutoRaise(False)
+
+    def _on_plot_toolbar_action_triggered(self, *_args) -> None:
+        QtCore.QTimer.singleShot(0, self._update_plot_help_state)
+
+    def _restore_input_history(
+        self,
+        *,
+        initial_session_root: Optional[Path],
+        initial_g2o_path: Optional[Path],
+    ) -> None:
+        session_root = initial_session_root or self._settings_existing_path("browser/last_session_root")
+        if session_root is not None:
+            self.session_root_edit.setText(str(session_root))
+
+        g2o_path = initial_g2o_path or self._settings_existing_path("browser/last_g2o_path")
+        if g2o_path is not None:
+            self.g2o_edit.setText(str(g2o_path))
+
+    def _settings_existing_path(self, key: str) -> Optional[Path]:
+        raw_value = self._settings.value(key, "", type=str)
+        if not raw_value:
+            return None
+        path = Path(raw_value).expanduser()
+        if path.exists():
+            return path
+        return None
+
+    def _existing_dialog_directory(self, text: str) -> Optional[Path]:
+        text = text.strip()
+        if not text:
+            return None
+        path = Path(text).expanduser()
+        if path.is_dir():
+            return path
+        if path.is_file():
+            return path.parent
+        return None
+
+    def _session_root_dialog_directory(self) -> str:
+        for candidate in (
+            self._existing_dialog_directory(self.session_root_edit.text()),
+            self._settings_existing_path("browser/last_session_root"),
+            self._settings_existing_path("browser/last_g2o_path"),
+        ):
+            if candidate is None:
+                continue
+            return str(candidate if candidate.is_dir() else candidate.parent)
+        return str(Path.home())
+
+    def _g2o_dialog_directory(self) -> str:
+        for candidate in (
+            self._existing_dialog_directory(self.g2o_edit.text()),
+            self._existing_dialog_directory(self.session_root_edit.text()),
+            self._settings_existing_path("browser/last_g2o_path"),
+            self._settings_existing_path("browser/last_session_root"),
+        ):
+            if candidate is None:
+                continue
+            return str(candidate if candidate.is_dir() else candidate.parent)
+        return str(Path.home())
+
+    def _remember_loaded_paths(self, paths: SessionPaths) -> None:
+        self._settings.setValue("browser/last_session_root", str(paths.session_root))
+        self._settings.setValue("browser/last_g2o_path", str(paths.g2o_path))
+        self._settings.sync()
+
+    def _release_plot_toolbar_navigation(self) -> bool:
+        if not hasattr(self, "toolbar") or self.toolbar is None or not self.toolbar.mode:
+            return False
+
+        mode = str(self.toolbar.mode).lower()
+        if "pan" in mode:
+            self.toolbar.pan()
+        elif "zoom" in mode:
+            self.toolbar.zoom()
+        else:
+            return False
+        self._update_plot_help_state()
+        return True
+
+    def _update_plot_help_state(self) -> None:
+        if not self._is_working_view():
+            self.plot_help_label.setText(
+                "Original view is read-only. Toggle Ghost to compare against working."
+            )
+            return
+
+        toolbar_mode = str(self.toolbar.mode).lower() if hasattr(self, "toolbar") and self.toolbar is not None else ""
+        if "zoom" in toolbar_mode:
+            self.plot_help_label.setText(
+                "Zoom active · click Pick Nodes or Pick Edges to resume selection."
+            )
+            return
+        if "pan" in toolbar_mode:
+            self.plot_help_label.setText(
+                "Pan active · click Pick Nodes or Pick Edges to resume selection."
+            )
+            return
+
+        if self.pick_mode == "edges":
+            self.plot_help_label.setText(
+                "Pick edges to inspect, disable, or replace."
+            )
+            return
+
+        self.plot_help_label.setText(
+            "Pick nodes to add closures, or pick edges to inspect/replace."
+        )
+
     def _apply_initial_window_geometry(self) -> None:
         screen = QtWidgets.QApplication.primaryScreen()
         if screen is None:
@@ -812,10 +973,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.session_root_edit = QtWidgets.QLineEdit()
         self.g2o_edit = QtWidgets.QLineEdit()
         browse_root_button = QtWidgets.QPushButton("Browse Root")
+        browse_root_button.setToolTip("Open the session-root browser from the most recent folder.")
         browse_root_button.clicked.connect(self._browse_session_root)
         browse_g2o_button = QtWidgets.QPushButton("Browse G2O")
+        browse_g2o_button.setToolTip("Open the g2o file browser from the most recent folder.")
         browse_g2o_button.clicked.connect(self._browse_g2o)
         load_button = QtWidgets.QPushButton("Load Session")
+        load_button.setProperty("buttonRole", "primary")
         load_button.clicked.connect(self.load_session)
 
         layout.addWidget(QtWidgets.QLabel("Session Root"), 0, 0)
@@ -875,11 +1039,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.pick_nodes_button.setText("Pick Nodes")
         self.pick_nodes_button.setCheckable(True)
         self.pick_nodes_button.setChecked(True)
+        self.pick_nodes_button.setToolTip("Exit pan/zoom mode and pick a source-target node pair.")
         self.pick_nodes_button.clicked.connect(lambda: self._set_pick_mode("nodes"))
 
         self.pick_edges_button = QtWidgets.QToolButton()
         self.pick_edges_button.setText("Pick Edges")
         self.pick_edges_button.setCheckable(True)
+        self.pick_edges_button.setToolTip("Exit pan/zoom mode and inspect an existing or manual edge.")
         self.pick_edges_button.clicked.connect(lambda: self._set_pick_mode("edges"))
 
         mode_group = QtWidgets.QButtonGroup(self)
@@ -889,10 +1055,12 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
 
         clear_button = QtWidgets.QToolButton()
         clear_button.setText("Clear Selection")
+        clear_button.setToolTip("Clear the current node or edge selection.")
         clear_button.clicked.connect(self._clear_selection)
 
         fit_view_button = QtWidgets.QToolButton()
         fit_view_button.setText("Fit View")
+        fit_view_button.setToolTip("Reset the trajectory view to the full pose graph.")
         fit_view_button.clicked.connect(lambda: self._refresh_plot(preserve_view=False))
 
         actions_row.addWidget(self.pick_nodes_button)
@@ -1278,6 +1446,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         action_layout.setContentsMargins(8, 8, 8, 8)
         action_layout.setSpacing(6)
         self.run_gicp_button = QtWidgets.QPushButton("Run GICP")
+        self.run_gicp_button.setProperty("buttonRole", "primary")
         self.run_gicp_button.clicked.connect(self.run_gicp)
         self.accept_button = QtWidgets.QPushButton("Add Manual")
         self.accept_button.clicked.connect(self.accept_constraint)
@@ -1292,8 +1461,10 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.remove_manual_button = QtWidgets.QPushButton("Remove")
         self.remove_manual_button.clicked.connect(self.remove_selected_manual_constraint)
         self.optimize_button = QtWidgets.QPushButton("Optimize")
+        self.optimize_button.setProperty("buttonRole", "primary")
         self.optimize_button.clicked.connect(self.run_optimization)
         self.export_button = QtWidgets.QPushButton("Export")
+        self.export_button.setProperty("buttonRole", "primary")
         self.export_button.clicked.connect(self.export_final_result)
         self.undo_button = QtWidgets.QPushButton("Undo")
         self.undo_button.clicked.connect(self.undo_last_change)
@@ -1817,24 +1988,35 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.log_text.appendPlainText(f"[{timestamp}] {message}")
 
     def _browse_session_root(self) -> None:
-        directory = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Session Root")
+        directory = QtWidgets.QFileDialog.getExistingDirectory(
+            self,
+            "Select Session Root",
+            self._session_root_dialog_directory(),
+        )
         if directory:
             self.session_root_edit.setText(directory)
+            self._settings.setValue("browser/last_session_root", directory)
+            self._settings.sync()
 
     def _browse_g2o(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Select pose_graph.g2o",
+            self._g2o_dialog_directory(),
             filter="G2O Files (*.g2o);;All Files (*)",
         )
         if path:
             self.g2o_edit.setText(path)
+            self._settings.setValue("browser/last_g2o_path", path)
+            self._settings.sync()
 
     def _set_pick_mode(self, mode: str) -> None:
+        self._release_plot_toolbar_navigation()
         self.pick_mode = mode
         self.trajectory_canvas.set_interaction_mode(mode)
         self.pick_nodes_button.setChecked(mode == "nodes")
         self.pick_edges_button.setChecked(mode == "edges")
+        self._update_plot_help_state()
 
     def _handle_plot_hover(self, kind: str, payload) -> None:
         if kind == "node" and payload is not None and self.trajectory is not None:
@@ -2163,9 +2345,6 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self.trajectory_view_info_label.setText(
                 f"P{pose_count} · L{loop_count} · edit"
             )
-            self.plot_help_label.setText(
-                "Pick nodes to add closures, or pick edges to inspect/replace."
-            )
             self.pick_nodes_button.setEnabled(True)
             self.pick_edges_button.setEnabled(True)
         else:
@@ -2174,11 +2353,10 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self.trajectory_view_info_label.setText(
                 f"P{pose_count} · L{loop_count} · read only"
             )
-            self.plot_help_label.setText(
-                "Original view is read-only. Toggle Ghost to compare against working."
-            )
             self.pick_nodes_button.setEnabled(False)
             self.pick_edges_button.setEnabled(False)
+            self._release_plot_toolbar_navigation()
+        self._update_plot_help_state()
         self._update_trajectory_legend_label()
         self._update_edge_action_buttons()
         self._refresh_plot(preserve_view=False)
@@ -2468,6 +2646,9 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 )
 
             self.session_paths = paths
+            self.session_root_edit.setText(str(paths.session_root))
+            self.g2o_edit.setText(str(paths.g2o_path))
+            self._remember_loaded_paths(paths)
             self.original_pose_graph = pose_graph
             self.original_trajectory = trajectory
             self.pose_graph = copy.deepcopy(pose_graph)
@@ -2524,8 +2705,9 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self.trajectory_view_info_label.setText(
                 f"P{self.trajectory.size} · L{len(self.pose_graph.loop_edges)} · edit"
             )
-            self.plot_help_label.setText("Pick nodes to add closures, or pick edges to inspect/replace.")
             self.pick_edges_button.setEnabled(True)
+            self._release_plot_toolbar_navigation()
+            self._update_plot_help_state()
             self.cloud_view.clear_scene()
             self._update_preview_summary(None)
             self._update_selection_labels()
