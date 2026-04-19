@@ -786,8 +786,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 background: transparent;
                 border: 1px solid transparent;
                 border-radius: 8px;
-                padding: 5px 12px;
-                min-height: 28px;
+                padding: 4px 10px;
+                min-height: 24px;
                 font-weight: 600;
                 color: #475569;
             }
@@ -809,20 +809,22 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             QLabel#StatusBadge {
                 background: #eef2f7;
                 border: 1px solid #d6dde6;
-                border-radius: 10px;
-                padding: 2px 8px;
+                border-radius: 8px;
+                padding: 1px 7px;
                 font-weight: 600;
+                font-size: 11px;
             }
             QLabel#PanelLegend {
                 background: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 6px;
-                padding: 4px 8px;
+                padding: 3px 6px;
                 color: #334155;
+                font-size: 11px;
             }
             QLabel#SubtleText {
                 color: #64748b;
-                font-size: 11px;
+                font-size: 10px;
             }
             QLabel#CompactValue {
                 color: #0f172a;
@@ -1056,6 +1058,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
     def _build_plot_panel(self) -> QtWidgets.QGroupBox:
         group = QtWidgets.QGroupBox("Trajectory")
         layout = QtWidgets.QVBoxLayout(group)
+        layout.setContentsMargins(7, 8, 7, 7)
+        layout.setSpacing(5)
         self.trajectory_canvas = TrajectoryCanvas(group)
         self.toolbar = NavigationToolbar(self.trajectory_canvas, group)
         self.trajectory_canvas.set_toolbar(self.toolbar)
@@ -1075,6 +1079,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.toolbar)
 
         header_row = QtWidgets.QHBoxLayout()
+        header_row.setSpacing(5)
         header_row.addWidget(QtWidgets.QLabel("View"))
         self.trajectory_view_combo = QtWidgets.QComboBox()
         self.trajectory_view_combo.addItems(["Working", "Original"])
@@ -1084,26 +1089,23 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.show_ghost_check.setChecked(True)
         self.show_ghost_check.stateChanged.connect(self._on_show_ghost_changed)
         header_row.addWidget(self.show_ghost_check)
-        header_row.addStretch(1)
-        layout.addLayout(header_row)
-
-        status_row = QtWidgets.QHBoxLayout()
         self.working_rev_badge = QtWidgets.QLabel("Rev 0")
         self.working_rev_badge.setObjectName("StatusBadge")
-        status_row.addWidget(self.working_rev_badge)
+        header_row.addWidget(self.working_rev_badge)
         self.session_state_badge = QtWidgets.QLabel("Clean")
         self.session_state_badge.setObjectName("StatusBadge")
-        status_row.addWidget(self.session_state_badge)
+        header_row.addWidget(self.session_state_badge)
         self.change_summary_badge = QtWidgets.QLabel("M+0 · D0")
         self.change_summary_badge.setObjectName("StatusBadge")
-        status_row.addWidget(self.change_summary_badge)
+        header_row.addWidget(self.change_summary_badge)
+        header_row.addStretch(1)
         self.trajectory_view_info_label = QtWidgets.QLabel("P0 · L0 · edit")
         self.trajectory_view_info_label.setObjectName("SubtleText")
-        status_row.addWidget(self.trajectory_view_info_label)
-        status_row.addStretch(1)
-        layout.addLayout(status_row)
+        header_row.addWidget(self.trajectory_view_info_label)
+        layout.addLayout(header_row)
 
         actions_row = QtWidgets.QHBoxLayout()
+        actions_row.setSpacing(6)
         self.pick_nodes_button = QtWidgets.QToolButton()
         self.pick_nodes_button.setText("Pick Nodes")
         self.pick_nodes_button.setCheckable(True)
@@ -1127,8 +1129,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         segmented_control = QtWidgets.QFrame()
         segmented_control.setObjectName("SegmentedControl")
         segmented_layout = QtWidgets.QHBoxLayout(segmented_control)
-        segmented_layout.setContentsMargins(3, 3, 3, 3)
-        segmented_layout.setSpacing(4)
+        segmented_layout.setContentsMargins(2, 2, 2, 2)
+        segmented_layout.setSpacing(3)
         segmented_layout.addWidget(self.pick_nodes_button)
         segmented_layout.addWidget(self.pick_edges_button)
 
@@ -1535,17 +1537,23 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.undo_button = QtWidgets.QPushButton("Undo")
         self.undo_button.clicked.connect(self.undo_last_change)
         self.undo_button.setEnabled(False)
-        yaw_steps_label = QtWidgets.QLabel("Yaw Steps")
+        yaw_steps_label = QtWidgets.QLabel("Yaw")
         yaw_steps_label.setObjectName("SubtleText")
+        auto_yaw_row = QtWidgets.QWidget()
+        auto_yaw_row_layout = QtWidgets.QHBoxLayout(auto_yaw_row)
+        auto_yaw_row_layout.setContentsMargins(0, 0, 0, 0)
+        auto_yaw_row_layout.setSpacing(6)
+        auto_yaw_row_layout.addWidget(yaw_steps_label)
+        auto_yaw_row_layout.addWidget(self.auto_yaw_steps_spin)
+        self.auto_yaw_button.setText("Auto Yaw")
+        auto_yaw_row_layout.addWidget(self.auto_yaw_button, 1)
 
         action_layout.addWidget(
             self._build_action_section(
                 "Match",
                 [
                     (self.run_gicp_button, 0, 0, 1, 2),
-                    (yaw_steps_label, 1, 0, 1, 1),
-                    (self.auto_yaw_steps_spin, 1, 1, 1, 1),
-                    (self.auto_yaw_button, 2, 0, 1, 2),
+                    (auto_yaw_row, 1, 0, 1, 2),
                 ],
             )
         )
