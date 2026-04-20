@@ -44,6 +44,10 @@ All notable changes to this project will be documented in this file.
 - Updated the wiki content so it can be published directly to GitHub Wiki with sidebar navigation and GitHub-safe asset links.
 - Added a prominent author/contact block to the README header.
 - Linked the author names in the README header to their GitHub profiles and corrected the `Xieyuanli Chen` spelling.
+- Switched the repository front page to English-first README files with a dedicated `README.zh.md` language counterpart.
+- Reworked the GitHub Wiki content into English-first pages with matching Chinese switch pages instead of line-by-line bilingual mixing.
+- Simplified the hero banner and tutorial card visuals to avoid text overflow on the homepage assets.
+- Updated the contact email to `xhubd@connect.ust.hk`.
 
 ### Validated
 

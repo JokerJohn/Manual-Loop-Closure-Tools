@@ -1,7 +1,7 @@
 # Manual Loop Closure Tools
 
 <p align="center">
-  <a href="README.md"><strong>English</strong></a> | <a href="README.zh.md">中文</a>
+  <a href="README.md">English</a> | <a href="README.zh.md"><strong>中文</strong></a>
 </p>
 
 <p align="center">
@@ -18,16 +18,16 @@
 </p>
 
 <p align="center">
-  <strong>Authors</strong>:
-  <a href="https://github.com/JokerJohn">Xiangcheng HU</a>,
-  <a href="https://github.com/zarathustr">Jin Wu</a> and
+  <strong>作者</strong>：
+  <a href="https://github.com/JokerJohn">Xiangcheng HU</a>、
+  <a href="https://github.com/zarathustr">Jin Wu</a>、
   <a href="https://github.com/Chen-Xieyuanli">Xieyuanli Chen</a><br/>
-  <strong>Contact</strong>: <a href="mailto:xhubd@connect.ust.hk">xhubd@connect.ust.hk</a>
+  <strong>联系邮箱</strong>：<a href="mailto:xhubd@connect.ust.hk">xhubd@connect.ust.hk</a>
 </p>
 
-Offline manual loop-closure editing and optimization tools for LiDAR mapping pose graphs.
+面向激光雷达位姿图的离线手动闭环编辑与优化工具。
 
-## Watch the Tutorial
+## 视频教程
 
 <p align="center">
   <a href="https://youtu.be/lemd4XfPSYY">
@@ -36,78 +36,78 @@ Offline manual loop-closure editing and optimization tools for LiDAR mapping pos
 </p>
 
 <p align="center">
-  Click the card to watch the end-to-end YouTube demo.
+  点击卡片可观看完整的 YouTube 演示视频。
 </p>
 
-## Overview
+## 项目简介
 
-This repository packages the manual loop-closure workflow into a standalone project with:
+本仓库将手动闭环工作流整理为一个独立项目，包含：
 
-- a PyQt GUI for trajectory inspection and point-cloud-assisted loop editing
-- a Python-first offline optimizer backend for exporting new pose graphs and maps
-- helper scripts for virtual environments, Python GTSAM checks, legacy backend build, environment checks, and screenshot generation
+- 用于轨迹检查和点云辅助闭环编辑的 PyQt 图形界面
+- 用于导出新位姿图和地图的 Python 优先离线优化后端
+- 用于虚拟环境、Python GTSAM 检查、legacy 后端构建、环境检查和截图生成的辅助脚本
 
-It is designed for mapping results that already contain:
+它面向已经导出以下结果的建图任务：
 
 - `pose_graph.g2o`
 - `optimized_poses_tum.txt`
 - `key_point_frame/*.pcd`
 
-## Screenshot
+## 界面截图
 
 <p align="center">
   <img src="assets/screenshots/edge-selected.png" alt="Edge selected screenshot" width="82%" />
 </p>
 
-## Workflow
+## 工作流
 
 <p align="center">
   <img src="assets/workflow.png" alt="Workflow diagram" width="100%" />
 </p>
 
-The GUI lets you inspect trajectories, select node pairs or existing loop edges, preview target/source point clouds, run GICP, add or replace loop constraints, manage a working graph session, and export a new optimized map.
+该图形界面支持轨迹检查、节点对和已有闭环边选择、source/target 点云预览、GICP 配准、手工新增或替换闭环约束、工作态位姿图管理，以及新优化地图导出。
 
-## Feature Demos
+## 功能动图
 
-### Add Loop
+### 新增闭环边
 
 <p align="center">
   <img src="assets/add_loopsx3.gif" alt="Add loop demo" width="82%" />
 </p>
 
-Add a new manual loop after validating a GICP result.
+在确认 GICP 结果后新增一条手工闭环边。
 
-### Replace Loop
+### 替换已有闭环边
 
 <p align="center">
   <img src="assets/replace_loopx3.gif" alt="Replace loop demo" width="82%" />
 </p>
 
-Replace an existing loop edge with a better manual registration result.
+用更可靠的手工配准结果替换已有闭环边。
 
-### Disable Loop
+### 禁用已有闭环边
 
 <p align="center">
   <img src="assets/disable_loop.gif" alt="Disable loop demo" width="82%" />
 </p>
 
-Temporarily disable an existing loop edge before re-optimization.
+在重新优化前临时禁用已有闭环边。
 
-## Key Features
+## 主要功能
 
-| Feature | Description |
+| 功能 | 说明 |
 |---|---|
-| Embedded PyQt + Open3D viewer | Inspect trajectories and point clouds in one workflow |
-| `Working` / `Original` trajectory comparison | Compare the edited graph against the baseline graph |
-| Manual edge add, replace, disable, restore | Control loop constraints explicitly in a working session |
-| Interactive source alignment in point-cloud view | Refine source initialization before GICP |
-| Auto yaw sweep for ground robots | Search yaw seeds before final registration |
-| Offline export of `g2o`, `TUM`, map, and trajectory PCD | Produce clean optimized outputs after validation |
-| Session-based graph editing with undo and change tracking | Keep a controlled workflow while revising loop edges |
+| 内嵌式 PyQt + Open3D viewer | 在一个工作流中查看轨迹与点云 |
+| `Working` / `Original` 双轨迹对比 | 对比编辑图与基线图 |
+| 手工新增、替换、禁用、恢复闭环边 | 显式控制 working session 中的闭环约束 |
+| 点云视图中的 source 初值交互调整 | 在 GICP 前修正初始位姿 |
+| 面向地面机器人的 Auto Yaw Sweep | 在最终配准前搜索 yaw 初值 |
+| 导出新的 `g2o`、`TUM`、地图和轨迹 PCD | 在验证完成后输出优化结果 |
+| 带撤销和改动跟踪的会话式图编辑 | 更可控地管理闭环边修改流程 |
 
-## Quick Start
+## 快速开始
 
-### Recommended path: `requirements.txt` + `.venv`
+### 推荐方式：`requirements.txt` + `.venv`
 
 ```bash
 cd ~/my_git/Mannual-Loop-Closure-Tools
@@ -116,19 +116,19 @@ source .venv/bin/activate
 python launch_gui.py --session-root /path/to/mapping_session
 ```
 
-For normal use, you can stop here. ROS, catkin, and the legacy C++ optimizer are optional.
+对于大多数用户，到这里就够了。ROS、catkin 和 legacy C++ optimizer 都是可选项。
 
-Python GTSAM 4.3 wrapper installation is documented here:
+Python GTSAM 4.3 wrapper 的安装说明见：
 
 - [docs/INSTALL_GTSAM_PYTHON.md](docs/INSTALL_GTSAM_PYTHON.md)
 
-You can also point directly to a `g2o` file:
+也可以直接指定某个 `g2o` 文件：
 
 ```bash
 python launch_gui.py --g2o /path/to/pose_graph.g2o
 ```
 
-### Alternative path: conda
+### 备选方式：conda
 
 ```bash
 cd ~/my_git/Mannual-Loop-Closure-Tools
@@ -137,26 +137,26 @@ conda activate manual-loop-closure
 python launch_gui.py --session-root /path/to/mapping_session
 ```
 
-## Legacy C++ Fallback Backend
+## Legacy C++ 回退后端
 
-The GUI now defaults to the Python backend. The C++ optimizer is only kept as an optional fallback and parity reference:
+GUI 默认使用 Python backend。C++ optimizer 仅保留为可选 fallback 和 parity 对照路径：
 
 ```bash
 cd ~/my_git/Mannual-Loop-Closure-Tools
 make backend
 ```
 
-If the C++ backend is not installed, the GUI still works normally with the Python path.
+如果没有安装 C++ backend，GUI 仍可通过 Python 路径正常工作。
 
-## Test Data
+## 测试数据
 
-You can download a sample mapping session for quick validation here:
+你可以通过下面的链接下载示例建图结果，快速验证工具流程：
 
 - Google Drive: https://drive.google.com/file/d/1iu3wO5YsiIl9ZuWlSlXz2fmu6ujTBw5J/view?usp=drive_link
 
-## Tested Environment
+## 当前测试环境
 
-The current repository content was tested with the following dependency versions on Ubuntu 20.04. Python-only usage is the primary path; the ROS/catkin backend is kept as a fallback.
+当前仓库内容在 Ubuntu 20.04 环境下使用如下依赖版本进行了测试。Python-only 是主路径，ROS/catkin backend 保留为 fallback。
 
 | Ubuntu | ROS | Python | catkin_tools | CMake | GCC / G++ |
 |---|---|---|---|---|---|
@@ -166,9 +166,9 @@ The current repository content was tested with the following dependency versions
 |---|---|---|---|---|---|---|---|---|---|
 | 0.19.0 | 5.15.10 | 5.15.2 | 1.24.4 | 1.14.1 | 3.10.8 | 4.2.0 | 1.10.0 | 1.50.1 | 4.3.0 |
 
-## Output Artifacts
+## 导出结果
 
-After optimization, the tool exports a new run directory under the input session:
+优化完成后，工具会在输入 session 下生成新的运行目录：
 
 - `edited_input_pose_graph.g2o`
 - `manual_loop_constraints.csv`
@@ -179,9 +179,9 @@ After optimization, the tool exports a new run directory under the input session
 - `pose_graph.png`
 - `manual_loop_report.json`
 
-## Python vs C++ Parity Validation
+## Python 与 C++ 一致性验证
 
-The Python backend was validated against the legacy C++ optimizer on multiple real sessions. The GUI now defaults to Python and only falls back to C++ when Python optimization fails and a legacy binary is available.
+Python backend 已在多组真实 session 上与 legacy C++ optimizer 做过一致性验证。GUI 现在默认走 Python，只有在 Python 优化失败且本地存在 legacy 二进制时才会隐藏回退到 C++。
 
 | Session | Constraints | Python time [s] | C++ time [s] | TUM max t err [m] | TUM max r err [rad] | g2o max t err [m] | g2o max r err [rad] | Map points Py / C++ |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -189,12 +189,12 @@ The Python backend was validated against the legacy C++ optimizer on multiple re
 | `floor34-1_fs_fastlio_saved` | 1 | 16.335 | 3.827 | 1.00e-09 | 3.56e-06 | 6.83e-05 | 4.50e-06 | 13,771,605 / 13,771,605 |
 | `dr_tunnel_2026_01_24_145439` | 0 | 12.112 | 2.909 | 2.49e-08 | 2.87e-09 | 4.99e-04 | 1.05e-06 | 2,139,789 / 2,139,789 |
 
-Notes:
+说明：
 
-- `optimized_poses_tum.txt` is already numerically aligned at the `1e-9 m` to `1e-8 m` translation level and `1e-6 rad` rotation level.
-- The remaining `pose_graph.g2o` difference mainly comes from export text precision and quaternion sign-equivalent representations, not from optimizer mismatch.
+- `optimized_poses_tum.txt` 已在 `1e-9 m` 到 `1e-8 m` 的平移量级和 `1e-6 rad` 的旋转量级上与 C++ 对齐。
+- `pose_graph.g2o` 的残余差异主要来自导出文本精度和四元数符号等价表示，而不是优化结果失配。
 
-## Repository Layout
+## 仓库结构
 
 ```text
 Mannual-Loop-Closure-Tools/
@@ -219,17 +219,17 @@ Mannual-Loop-Closure-Tools/
 └── wiki/
 ```
 
-## Documentation
+## 文档
 
-- [中文 README](README.zh.md)
-- [Installation Guide](docs/INSTALL.md)
-- [Python GTSAM 4.3](docs/INSTALL_GTSAM_PYTHON.md)
-- [Tool Manual](docs/TOOL_README.md)
+- [English README](README.md)
+- [安装说明](docs/INSTALL.md)
+- [Python GTSAM 4.3 安装](docs/INSTALL_GTSAM_PYTHON.md)
+- [工具说明](docs/TOOL_README.md)
 - [GitHub Wiki](https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/wiki)
-- [Contributing](CONTRIBUTING.md)
-- [Changelog](CHANGELOG.md)
+- [贡献说明](CONTRIBUTING.md)
+- [版本记录](CHANGELOG.md)
 
-## Developer Utilities
+## 开发辅助
 
 ```bash
 make help
@@ -240,15 +240,15 @@ make backend
 make assets SESSION_ROOT=/path/to/session
 ```
 
-## Open-Source Notes
+## 开源说明
 
-This repository focuses on the standalone manual-loop-closure workflow only. It does not include the full online mapping stack.
+本仓库聚焦于独立的手动闭环工具链，不包含完整的在线建图系统。
 
-This project is derived from and complements the broader **MS-Mapping** research and codebase:
+本项目源自并服务于更完整的 **MS-Mapping** 研究与代码体系：
 
-- Project URL: https://github.com/JokerJohn/MS-Mapping
+- 项目地址: https://github.com/JokerJohn/MS-Mapping
 
-If you use this repository in academic work, please also cite the MS-Mapping paper:
+如果你在学术工作中使用了本仓库，也请同时引用 MS-Mapping 论文：
 
 ```bibtex
 @misc{hu2024msmapping,
@@ -262,6 +262,6 @@ If you use this repository in academic work, please also cite the MS-Mapping pap
 }
 ```
 
-## License
+## 许可
 
-This standalone repository is released under the GNU General Public License v3.0 (GPLv3).
+本独立仓库采用 GNU General Public License v3.0（GPLv3）。

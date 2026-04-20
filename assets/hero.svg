@@ -1,13 +1,13 @@
 <svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="120" y1="60" x2="1160" y2="560" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="80" y1="40" x2="1180" y2="580" gradientUnits="userSpaceOnUse">
       <stop stop-color="#0F172A"/>
-      <stop offset="0.52" stop-color="#0B3954"/>
+      <stop offset="0.55" stop-color="#0B3954"/>
       <stop offset="1" stop-color="#16697A"/>
     </linearGradient>
     <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
       <stop stop-color="#F8FAFC" stop-opacity="0.98"/>
-      <stop offset="1" stop-color="#E2E8F0" stop-opacity="0.88"/>
+      <stop offset="1" stop-color="#E2E8F0" stop-opacity="0.90"/>
     </linearGradient>
     <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
       <stop stop-color="#22C55E"/>
@@ -16,45 +16,45 @@
   </defs>
 
   <rect width="1280" height="640" rx="24" fill="url(#bg)"/>
-  <circle cx="1110" cy="110" r="170" fill="#38BDF8" fill-opacity="0.10"/>
-  <circle cx="1000" cy="520" r="210" fill="#34D399" fill-opacity="0.08"/>
-  <circle cx="170" cy="520" r="120" fill="#F59E0B" fill-opacity="0.10"/>
+  <circle cx="1110" cy="110" r="170" fill="#38BDF8" fill-opacity="0.08"/>
+  <circle cx="1010" cy="520" r="210" fill="#34D399" fill-opacity="0.07"/>
+  <circle cx="165" cy="520" r="120" fill="#F59E0B" fill-opacity="0.08"/>
 
-  <rect x="68" y="64" width="154" height="38" rx="19" fill="#E2E8F0" fill-opacity="0.10" stroke="#E2E8F0" stroke-opacity="0.18"/>
-  <text x="91" y="88" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="18" font-weight="700">Offline LiDAR Tooling</text>
+  <rect x="70" y="64" width="160" height="38" rx="19" fill="#E2E8F0" fill-opacity="0.10" stroke="#E2E8F0" stroke-opacity="0.18"/>
+  <text x="92" y="88" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="18" font-weight="700">Offline LiDAR Toolkit</text>
 
-  <text x="70" y="170" fill="white" font-family="Arial, sans-serif" font-size="56" font-weight="800">Manual Loop Closure Tools</text>
+  <text x="70" y="170" fill="white" font-family="Arial, sans-serif" font-size="58" font-weight="800">Manual Loop Closure Tools</text>
   <text x="70" y="214" fill="#BFDBFE" font-family="Arial, sans-serif" font-size="24" font-weight="600">
-    Standalone GUI and offline optimizer for manual loop closure editing
+    Standalone GUI and Python-first optimizer
   </text>
-  <text x="70" y="250" fill="#C7D2FE" font-family="Arial, sans-serif" font-size="24" font-weight="600">
-    面向激光雷达位姿图的独立手动闭环编辑与优化项目
+  <text x="70" y="246" fill="#C7D2FE" font-family="Arial, sans-serif" font-size="22" font-weight="600">
+    for editing and validating loop closures
   </text>
 
-  <text x="72" y="320" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="22" font-weight="700">What it gives you</text>
-  <text x="82" y="364" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="20">• Working / Original pose-graph comparison</text>
-  <text x="82" y="398" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="20">• Interactive source alignment + GICP verification</text>
-  <text x="82" y="432" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="20">• Manual add / replace / disable / restore loop edges</text>
-  <text x="82" y="466" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="20">• Export of new g2o, TUM, map, and trajectory PCD</text>
+  <text x="72" y="314" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="22" font-weight="700">What you can do</text>
+  <text x="82" y="356" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="20">• Compare Working and Original trajectories</text>
+  <text x="82" y="390" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="20">• Align source clouds and verify with GICP</text>
+  <text x="82" y="424" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="20">• Add, replace, disable, and restore loop edges</text>
+  <text x="82" y="458" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="20">• Export new g2o, TUM, map, and trajectory PCD</text>
 
-  <rect x="760" y="80" width="450" height="470" rx="24" fill="url(#card)" stroke="#FFFFFF" stroke-opacity="0.18"/>
-  <rect x="790" y="112" width="390" height="52" rx="16" fill="#0F172A"/>
-  <text x="816" y="145" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="22" font-weight="700">Working Session</text>
+  <rect x="760" y="82" width="448" height="468" rx="24" fill="url(#card)" stroke="#FFFFFF" stroke-opacity="0.18"/>
+  <rect x="790" y="112" width="388" height="52" rx="16" fill="#0F172A"/>
+  <text x="818" y="145" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="22" font-weight="700">Working Session</text>
 
-  <rect x="792" y="188" width="180" height="118" rx="18" fill="#EFF6FF" stroke="#BFDBFE"/>
-  <text x="815" y="222" fill="#1D4ED8" font-family="Arial, sans-serif" font-size="18" font-weight="700">Trajectory Review</text>
-  <text x="815" y="250" fill="#334155" font-family="Arial, sans-serif" font-size="16">Pick nodes or existing loop edges</text>
-  <text x="815" y="274" fill="#334155" font-family="Arial, sans-serif" font-size="16">Compare Working vs Original</text>
+  <rect x="792" y="188" width="182" height="116" rx="18" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="814" y="221" fill="#1D4ED8" font-family="Arial, sans-serif" font-size="18" font-weight="700">Trajectory Review</text>
+  <text x="814" y="249" fill="#334155" font-family="Arial, sans-serif" font-size="15">Pick nodes and loop edges</text>
+  <text x="814" y="272" fill="#334155" font-family="Arial, sans-serif" font-size="15">Compare Working vs Original</text>
 
-  <rect x="998" y="188" width="180" height="118" rx="18" fill="#F0FDF4" stroke="#86EFAC"/>
-  <text x="1021" y="222" fill="#15803D" font-family="Arial, sans-serif" font-size="18" font-weight="700">Cloud Alignment</text>
-  <text x="1021" y="250" fill="#334155" font-family="Arial, sans-serif" font-size="16">Preview source / target clouds</text>
-  <text x="1021" y="274" fill="#334155" font-family="Arial, sans-serif" font-size="16">Run GICP or Auto Yaw Sweep</text>
+  <rect x="996" y="188" width="182" height="116" rx="18" fill="#F0FDF4" stroke="#86EFAC"/>
+  <text x="1018" y="221" fill="#15803D" font-family="Arial, sans-serif" font-size="18" font-weight="700">Cloud Alignment</text>
+  <text x="1018" y="249" fill="#334155" font-family="Arial, sans-serif" font-size="15">Preview source and target clouds</text>
+  <text x="1018" y="272" fill="#334155" font-family="Arial, sans-serif" font-size="15">Run GICP or Auto Yaw</text>
 
   <rect x="792" y="328" width="386" height="96" rx="18" fill="#F8FAFC" stroke="#CBD5E1"/>
-  <text x="818" y="362" fill="#0F172A" font-family="Arial, sans-serif" font-size="18" font-weight="700">Graph Changes</text>
-  <text x="818" y="388" fill="#475569" font-family="Arial, sans-serif" font-size="16">Add manual edges, replace weak loops,</text>
-  <text x="818" y="410" fill="#475569" font-family="Arial, sans-serif" font-size="16">track revisions, undo changes, then optimize.</text>
+  <text x="818" y="361" fill="#0F172A" font-family="Arial, sans-serif" font-size="18" font-weight="700">Graph Changes</text>
+  <text x="818" y="387" fill="#475569" font-family="Arial, sans-serif" font-size="15">Track edits, replace weak loops,</text>
+  <text x="818" y="409" fill="#475569" font-family="Arial, sans-serif" font-size="15">undo changes, and optimize.</text>
 
   <rect x="792" y="446" width="386" height="72" rx="18" fill="url(#accent)"/>
   <text x="818" y="488" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="800">Export clean working results</text>
