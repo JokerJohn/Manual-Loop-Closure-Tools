@@ -119,6 +119,7 @@ try:
         TARGET_CLOUD_MODE_TEMPORAL_WINDOW,
         TrajectoryData,
         TrajectoryValidationError,
+        align_pose_graph_to_frame_count,
         load_pose_graph,
         load_tum_trajectory,
         list_numbered_pcds,
@@ -1025,6 +1026,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 continue
             return str(candidate if candidate.is_dir() else candidate.parent)
         return str(Path.home())
+
+    def _is_g2o_under_session_root(self, session_root: Path, g2o_path: Path) -> bool:
+        try:
+            g2o_path.resolve().relative_to(session_root.resolve())
+            return True
+        except ValueError:
+            return False
 
     def _remember_loaded_paths(self, paths: SessionPaths) -> None:
         self._settings.setValue("browser/last_session_root", str(paths.session_root))
@@ -2217,6 +2225,11 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         )
         if directory:
             self.session_root_edit.setText(directory)
+            current_g2o_text = self.g2o_edit.text().strip()
+            if current_g2o_text:
+                current_g2o = Path(current_g2o_text).expanduser()
+                if current_g2o.exists() and not self._is_g2o_under_session_root(Path(directory), current_g2o):
+                    self.g2o_edit.clear()
             self._settings.setValue("browser/last_session_root", directory)
             self._settings.sync()
 
@@ -2869,24 +2882,38 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         try:
             session_root_text = self.session_root_edit.text().strip()
             g2o_text = self.g2o_edit.text().strip()
-            paths = resolve_session_paths(
-                session_root=Path(session_root_text) if session_root_text else None,
-                g2o_path=Path(g2o_text) if g2o_text else None,
-            )
+            session_root_path = Path(session_root_text) if session_root_text else None
+            g2o_path = Path(g2o_text) if g2o_text else None
+            paths = None
+            stale_g2o_note = None
+            if session_root_path is not None and g2o_path is not None:
+                resolved_root = session_root_path.expanduser().resolve()
+                resolved_g2o = g2o_path.expanduser().resolve()
+                if (
+                    resolved_root.is_dir()
+                    and resolved_g2o.is_file()
+                    and not self._is_g2o_under_session_root(resolved_root, resolved_g2o)
+                ):
+                    paths = resolve_session_paths(session_root=session_root_path)
+                    stale_g2o_note = (
+                        f"Ignored stale g2o outside session root: {resolved_g2o}. "
+                        f"Using {paths.g2o_path} from {paths.session_root}."
+                    )
+            if paths is None:
+                paths = resolve_session_paths(
+                    session_root=session_root_path,
+                    g2o_path=g2o_path,
+                )
             pose_graph = load_pose_graph(paths.g2o_path)
             trajectory = load_tum_trajectory(paths.tum_path)
             keyframe_paths = list_numbered_pcds(paths.keyframe_dir)
-            validate_keyframe_numbering(keyframe_paths, len(pose_graph.vertex_ids))
-            if trajectory.size != len(pose_graph.vertex_ids):
-                raise TrajectoryValidationError(
-                    "TUM pose count does not match g2o vertex count: "
-                    f"{trajectory.size} vs {len(pose_graph.vertex_ids)}"
-                )
             if trajectory.size != len(keyframe_paths):
                 raise PcdValidationError(
                     "Keyframe PCD count does not match TUM pose count: "
                     f"{len(keyframe_paths)} vs {trajectory.size}"
                 )
+            pose_graph, trim_note = align_pose_graph_to_frame_count(pose_graph, trajectory.size)
+            validate_keyframe_numbering(keyframe_paths, len(pose_graph.vertex_ids))
 
             self.session_paths = paths
             self.session_root_edit.setText(str(paths.session_root))
@@ -2965,6 +2992,10 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 f"g2o={paths.g2o_path.name} | tum={paths.tum_path.name} | "
                 f"keyframes={len(self.keyframe_paths)} | loops={len(self.pose_graph.loop_edges)}"
             )
+            if stale_g2o_note:
+                self.append_log(stale_g2o_note)
+            if trim_note:
+                self.append_log(trim_note)
             self.append_log(
                 f"Loaded session root={paths.session_root}, g2o={paths.g2o_path}, "
                 f"tum={paths.tum_path}, keyframes={len(self.keyframe_paths)}, "

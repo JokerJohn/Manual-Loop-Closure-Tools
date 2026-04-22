@@ -24,6 +24,14 @@ It replaces the selected edge only inside the working session semantics.
 
 The Python backend prioritizes easier deployment and GUI integration. The current parity results show much simpler installation at the cost of higher optimization runtime on the tested sessions.
 
+## Why does a PALoc session show one more g2o vertex than TUM or PCD frames?
+
+This usually comes from the PALoc export path, not from the GUI.
+
+Some older PALoc exports wrote the full pose graph but missed the last keyframe when saving `optimized_poses_tum.txt` and `key_point_frame/*.pcd`.
+
+The GUI now trims a simple trailing unmatched g2o vertex automatically so these sessions can still be loaded, but regenerating the PALoc result after fixing the PALoc save path is still recommended.
+
 ## Where should I start reading?
 
 Start from:

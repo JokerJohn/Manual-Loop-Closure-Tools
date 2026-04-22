@@ -5,6 +5,7 @@ from .pose_graph_io import (
     EdgeRecord,
     PoseGraphData,
     PoseGraphValidationError,
+    align_pose_graph_to_frame_count,
     load_pose_graph,
     write_filtered_pose_graph,
 )

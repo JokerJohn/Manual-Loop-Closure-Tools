@@ -53,7 +53,9 @@ class PoseGraphData:
     prior_nodes: Set[int]
     gnss_nodes: Dict[int, str]
     raw_lines: List[str] = field(default_factory=list)
+    vertex_line_indices: Dict[int, int] = field(default_factory=dict)
     edge_index_by_uid: Dict[int, EdgeRecord] = field(default_factory=dict)
+    excluded_line_indices: Set[int] = field(default_factory=set)
 
     def get_edge(self, edge_uid: int) -> EdgeRecord:
         return self.edge_index_by_uid[edge_uid]
@@ -62,8 +64,16 @@ class PoseGraphData:
 def _parse_g2o_rich(
     path: Path,
     odom_threshold: int,
-) -> tuple[Dict[int, tuple[float, float, float]], List[EdgeRecord], Set[int], Dict[int, str], List[str]]:
+) -> tuple[
+    Dict[int, tuple[float, float, float]],
+    Dict[int, int],
+    List[EdgeRecord],
+    Set[int],
+    Dict[int, str],
+    List[str],
+]:
     vertices: Dict[int, tuple[float, float, float]] = {}
+    vertex_line_indices: Dict[int, int] = {}
     prior_nodes: Set[int] = set()
     gnss_nodes: Dict[int, str] = {}
     raw_lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
@@ -98,6 +108,7 @@ def _parse_g2o_rich(
             else:
                 continue
             vertices[idx] = (x, y, z)
+            vertex_line_indices[idx] = line_index
             continue
 
         if not tag.startswith("EDGE") or len(tokens) < 3:
@@ -130,11 +141,11 @@ def _parse_g2o_rich(
             )
         )
 
-    return vertices, edge_records, prior_nodes, gnss_nodes, raw_lines
+    return vertices, vertex_line_indices, edge_records, prior_nodes, gnss_nodes, raw_lines
 
 
 def load_pose_graph(path: Path, odom_threshold: int = 1) -> PoseGraphData:
-    vertices, edge_records, prior_nodes, gnss_nodes, raw_lines = _parse_g2o_rich(
+    vertices, vertex_line_indices, edge_records, prior_nodes, gnss_nodes, raw_lines = _parse_g2o_rich(
         path,
         odom_threshold,
     )
@@ -164,8 +175,76 @@ def load_pose_graph(path: Path, odom_threshold: int = 1) -> PoseGraphData:
         prior_nodes=prior_nodes,
         gnss_nodes=gnss_nodes,
         raw_lines=raw_lines,
+        vertex_line_indices=vertex_line_indices,
         edge_index_by_uid=edge_index_by_uid,
     )
+
+
+def align_pose_graph_to_frame_count(
+    pose_graph: PoseGraphData,
+    frame_count: int,
+) -> tuple[PoseGraphData, Optional[str]]:
+    current_count = len(pose_graph.vertex_ids)
+    if current_count == frame_count:
+        return pose_graph, None
+    if current_count < frame_count:
+        raise PoseGraphValidationError(
+            "g2o vertex count is smaller than the available TUM/PCD frame count: "
+            f"{current_count} vs {frame_count}"
+        )
+
+    trailing_ids = pose_graph.vertex_ids[frame_count:]
+    expected_trailing_ids = list(range(frame_count, current_count))
+    if trailing_ids != expected_trailing_ids:
+        raise PoseGraphValidationError(
+            "g2o contains extra vertices that are not a simple trailing range. "
+            f"Expected trailing ids {expected_trailing_ids[:3]}... but got {trailing_ids[:3]}..."
+        )
+
+    kept_ids = pose_graph.vertex_ids[:frame_count]
+    removed_ids = set(trailing_ids)
+    kept_edges = [
+        edge
+        for edge in pose_graph.edge_records
+        if edge.source_id not in removed_ids and edge.target_id not in removed_ids
+    ]
+    removed_line_indices = set(pose_graph.excluded_line_indices)
+    removed_line_indices.update(
+        pose_graph.vertex_line_indices[vertex_id]
+        for vertex_id in trailing_ids
+        if vertex_id in pose_graph.vertex_line_indices
+    )
+    removed_line_indices.update(
+        edge.line_index
+        for edge in pose_graph.edge_records
+        if (edge.source_id in removed_ids or edge.target_id in removed_ids) and edge.line_index is not None
+    )
+
+    odom_edges = [edge for edge in kept_edges if edge.edge_type == "odom"]
+    loop_edges = [edge for edge in kept_edges if edge.edge_type == "loop_existing"]
+    aligned = PoseGraphData(
+        path=pose_graph.path,
+        vertex_ids=kept_ids,
+        positions_xyz=pose_graph.positions_xyz[:frame_count].copy(),
+        edge_records=kept_edges,
+        odom_edges=odom_edges,
+        loop_edges=loop_edges,
+        prior_nodes={node_id for node_id in pose_graph.prior_nodes if node_id < frame_count},
+        gnss_nodes={node_id: kind for node_id, kind in pose_graph.gnss_nodes.items() if node_id < frame_count},
+        raw_lines=pose_graph.raw_lines,
+        vertex_line_indices={
+            node_id: line_index
+            for node_id, line_index in pose_graph.vertex_line_indices.items()
+            if node_id < frame_count
+        },
+        edge_index_by_uid={edge.edge_uid: edge for edge in kept_edges},
+        excluded_line_indices=removed_line_indices,
+    )
+    note = (
+        "Trimmed "
+        f"{current_count - frame_count} trailing g2o vertex/vertices without matching TUM/PCD frames."
+    )
+    return aligned, note
 
 
 def write_filtered_pose_graph(pose_graph: PoseGraphData, output_path: Path) -> None:
@@ -178,6 +257,6 @@ def write_filtered_pose_graph(pose_graph: PoseGraphData, output_path: Path) -> N
 
     with output_path.open("w", encoding="utf-8") as stream:
         for line_index, raw_line in enumerate(pose_graph.raw_lines):
-            if line_index in disabled_line_indices:
+            if line_index in disabled_line_indices or line_index in pose_graph.excluded_line_indices:
                 continue
             stream.write(raw_line)

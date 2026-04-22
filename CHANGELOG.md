@@ -43,6 +43,7 @@ All notable changes to this project will be documented in this file.
 - Reworked the right-side control area into persistent `Summary` / `Advanced` tabs with per-tab scrolling so the tab header remains visible while browsing long panels.
 - Compressed the `Summary`, `Delta`, and `Registration` layouts, moved `MapVoxel` into `Advanced`, and simplified action labels for a denser but clearer control column.
 - Improved the point-cloud viewer defaults with a top-down camera preset, active preset highlighting, and synchronized local/repo UI behavior.
+- Improved PALoc-style session loading by ignoring stale explicit g2o paths outside the selected session root and trimming simple trailing unmatched g2o vertices.
 - Added animated README demos for adding, replacing, and disabling loop edges.
 - Added a repository-hosted wiki content set under `wiki/` with a GitHub-Wiki-ready page structure.
 - Enlarged the main README screenshot and switched feature demos from a three-column layout to full-width single-column sections for clearer viewing.

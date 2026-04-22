@@ -67,6 +67,12 @@ It is designed for mapping results that already contain:
 
 The GUI lets you inspect trajectories, select node pairs or existing loop edges, preview target/source point clouds, run GICP, add or replace loop constraints, manage a working graph session, and export a new optimized map.
 
+Compatibility note:
+
+- Some older PALoc exports may contain `pose_graph.g2o = N+1` while `optimized_poses_tum.txt` and `key_point_frame/*.pcd` stay at `N`.
+- The GUI now trims a simple trailing unmatched g2o vertex automatically so these sessions can still be opened.
+- Regenerating the PALoc export after fixing the PALoc save path is still the recommended long-term solution.
+
 ## Feature Demos
 
 ### Add Loop

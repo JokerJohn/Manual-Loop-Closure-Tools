@@ -36,3 +36,19 @@ Check the export map voxel in `Advanced`.
 ## Session Browser Opens at Home
 
 The GUI remembers the last successful session path. If it still resets unexpectedly, verify that the session was actually loaded successfully before reopening the file dialog.
+
+## A PALoc Session Fails Because `g2o` Has One Extra Vertex
+
+Symptoms often look like:
+
+- `pose_graph.g2o` has `N+1` vertices
+- `optimized_poses_tum.txt` has `N` rows
+- `key_point_frame/*.pcd` has `N` files
+
+The current GUI now handles the simple case where the extra g2o vertex is just a trailing unmatched vertex.
+
+If you still see a load failure:
+
+- make sure you are not reusing a stale `g2o` path from another session
+- reload the PALoc session root directly
+- if possible, regenerate the PALoc export after fixing PALoc's save path so `g2o`, `TUM`, and PCD counts match exactly
