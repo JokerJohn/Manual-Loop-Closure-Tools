@@ -50,3 +50,24 @@
 - 被禁用的闭环边不会进入最终导出
 - 替换后的闭环以 working graph 的接受状态导出
 - 原始输入文件不会被覆盖
+
+## 项目日志与复盘
+
+每个编辑项目现在都会写出：
+
+- `project_state.json`
+- `execution.log`
+- `operations.jsonl`
+
+这样可以：
+
+- 回看一次手动编辑过程中做过哪些操作
+- 用 `Load Session` 恢复最近一次项目
+- 用 `Open Project` 恢复某个历史项目
+
+## Run 与 Export 的区别
+
+- `manual_loop_runs/` 保存真实优化输出
+- `manual_loop_exports/` 保存指向某次 run 的轻量级导出清单
+
+因此 `Export` 不会再重复复制整包 run 数据。

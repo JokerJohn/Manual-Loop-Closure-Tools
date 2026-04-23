@@ -56,9 +56,14 @@ All notable changes to this project will be documented in this file.
 - Simplified the hero banner and tutorial card visuals to avoid text overflow on the homepage assets.
 - Updated the contact email to `xhubd@connect.ust.hk`.
 - Added a beginner-friendly Docker FAQ and linked it directly from both README quick-start sections.
+- Added project-aware edit persistence with `manual_loop_projects/`, resumable `project_state.json`, structured `operations.jsonl`, and `execution.log`.
+- Added an `Open Project` session-input entry so historical edit projects can be restored explicitly instead of only resuming the latest project.
+- Reworked export behavior so `manual_loop_exports/` stores lightweight manifests pointing to `manual_loop_runs/` instead of duplicating the full optimization output.
+- Updated README and Wiki pages to explain the new project/run/export directory model and historical-project restore workflow.
 
 ### Validated
 
 - `python3 -m py_compile gui/manual_loop_closure_tool.py gui/manual_loop_closure/open3d_viewer.py`
 - `QT_QPA_PLATFORM=offscreen python3 launch_gui.py --help`
 - Offscreen widget instantiation for the updated trajectory, tabbed control panel, and camera preset controls
+- Offscreen session load and project-resume checks against a real PALoc-style session

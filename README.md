@@ -127,7 +127,7 @@ Docker FAQ for first-time users:
 
 - Need a display permission first: `xhost +local:docker`
 - Mount your host session to `/data/session`
-- All exported outputs stay on the host under `manual_loop_runs/`
+- Host outputs stay under `manual_loop_projects/`, `manual_loop_runs/`, and `manual_loop_exports/`
 - Headless usage is supported through the Python optimizer CLI
 - Full details: [docs/DOCKER.md](docs/DOCKER.md)
 
@@ -205,16 +205,19 @@ The current repository content was tested with the following dependency versions
 
 ## Output Artifacts
 
-After optimization, the tool exports a new run directory under the input session:
+The tool now separates edit history, optimization outputs, and final export manifests:
 
-- `edited_input_pose_graph.g2o`
-- `manual_loop_constraints.csv`
-- `pose_graph.g2o`
-- `optimized_poses_tum.txt`
-- `global_map_manual_imu.pcd`
-- `trajectory.pcd`
-- `pose_graph.png`
-- `manual_loop_report.json`
+| Location | Purpose | Main files |
+|---|---|---|
+| `manual_loop_projects/<project_id>/` | Persistent edit project state for resume and review | `project_state.json`, `execution.log`, `operations.jsonl` |
+| `manual_loop_runs/<run_id>/` | One optimization run output | `edited_input_pose_graph.g2o`, `manual_loop_constraints.csv`, `pose_graph.g2o`, `optimized_poses_tum.txt`, `global_map_manual_imu.pcd`, `trajectory.pcd`, `pose_graph.png`, `manual_loop_report.json`, `run_context.json` |
+| `manual_loop_exports/<export_id>/` | Lightweight final-export pointer without duplicating the full run directory | `export_manifest.json`, `selected_run.txt`, `run` symlink |
+
+Resume behavior:
+
+- `Load Session` resumes the latest edit project for the selected session root.
+- `Open Project` restores a specific historical project by selecting its `project_state.json`.
+- Export no longer copies the full optimized run again; it records a manifest that points to the selected run.
 
 ## Python vs C++ Parity Validation
 

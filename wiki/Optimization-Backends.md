@@ -41,3 +41,12 @@ Both backends export:
 - `trajectory.pcd`
 - `pose_graph.png`
 - `manual_loop_report.json`
+
+The full output layout is:
+
+- `manual_loop_projects/<project_id>/`
+  - edit-state and resume files
+- `manual_loop_runs/<run_id>/`
+  - actual optimizer outputs
+- `manual_loop_exports/<export_id>/`
+  - final-export manifest pointing to one selected run

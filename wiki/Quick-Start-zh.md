@@ -32,6 +32,27 @@ python launch_gui.py --session-root /path/to/mapping_session
 7. 优化 working graph。
 8. 导出最终结果。
 
+## 恢复旧编辑项目
+
+- `Load Session` 会恢复当前 session root 下最近一次编辑项目。
+- `Open Project` 可以通过选择某个 `project_state.json` 恢复指定历史项目。
+
+界面示意：
+
+![Session Input](https://raw.githubusercontent.com/JokerJohn/Manual-Loop-Closure-Tools/main/assets/screenshots/session-loaded.png)
+
+## 目录结构
+
+- `manual_loop_projects/<project_id>/`
+  - 编辑历史和恢复状态
+  - `project_state.json`, `execution.log`, `operations.jsonl`
+- `manual_loop_runs/<run_id>/`
+  - 一次优化输出
+  - 编辑后的 g2o、constraints CSV、优化后 TUM、地图 PCD、轨迹 PCD、报告、图像、run context
+- `manual_loop_exports/<export_id>/`
+  - 轻量级最终导出清单
+  - 不再重复复制整包 run 数据
+
 ## 快速链接
 
 - [GUI 工作流](https://github.com/JokerJohn/Manual-Loop-Closure-Tools/wiki/GUI-Workflow-zh)

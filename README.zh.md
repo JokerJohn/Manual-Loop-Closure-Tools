@@ -127,7 +127,7 @@ docker run --rm -it \
 
 - 先执行显示权限放通：`xhost +local:docker`
 - 把宿主机 session 目录挂载到 `/data/session`
-- 导出的结果会直接保存在宿主机的 `manual_loop_runs/`
+- 宿主机输出会落在 `manual_loop_projects/`、`manual_loop_runs/` 和 `manual_loop_exports/`
 - 无图形界面环境可以直接使用 Python 优化器 CLI
 - 详细说明见：[docs/DOCKER.md](docs/DOCKER.md)
 
@@ -203,18 +203,21 @@ make backend
 |---|---|---|---|---|---|---|---|---|---|
 | 0.19.0 | 5.15.10 | 5.15.2 | 1.24.4 | 1.14.1 | 3.10.8 | 4.2.0 | 1.10.0 | 1.50.1 | 4.3.0 |
 
-## 导出结果
+## 输出文件
 
-优化完成后，工具会在输入 session 下生成新的运行目录：
+工具现在把编辑状态、优化运行结果和最终导出清单分开保存：
 
-- `edited_input_pose_graph.g2o`
-- `manual_loop_constraints.csv`
-- `pose_graph.g2o`
-- `optimized_poses_tum.txt`
-- `global_map_manual_imu.pcd`
-- `trajectory.pcd`
-- `pose_graph.png`
-- `manual_loop_report.json`
+| 位置 | 作用 | 主要文件 |
+|---|---|---|
+| `manual_loop_projects/<project_id>/` | 持久化编辑项目，便于恢复和复盘 | `project_state.json`, `execution.log`, `operations.jsonl` |
+| `manual_loop_runs/<run_id>/` | 一次 `Optimize` 的真实输出 | `edited_input_pose_graph.g2o`, `manual_loop_constraints.csv`, `pose_graph.g2o`, `optimized_poses_tum.txt`, `global_map_manual_imu.pcd`, `trajectory.pcd`, `pose_graph.png`, `manual_loop_report.json`, `run_context.json` |
+| `manual_loop_exports/<export_id>/` | 轻量级最终导出清单，不再重复复制整包 run 数据 | `export_manifest.json`, `selected_run.txt`, `run` 软链接 |
+
+恢复逻辑：
+
+- `Load Session` 会恢复该 session 当前最新的编辑项目。
+- `Open Project` 可以通过选择某个 `project_state.json` 打开历史编辑项目。
+- `Export` 不再复制整包优化结果，而是写一个指向目标 run 的清单。
 
 ## Python 与 C++ 一致性验证
 

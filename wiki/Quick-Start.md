@@ -32,6 +32,27 @@ Your session should already contain:
 7. Optimize the working graph.
 8. Export the final result.
 
+## Resume an Old Edit Project
+
+- `Load Session` resumes the latest edit project under the selected session root.
+- `Open Project` lets you restore a specific historical edit project by picking its `project_state.json`.
+
+Session input example:
+
+![Session Input](https://raw.githubusercontent.com/JokerJohn/Manual-Loop-Closure-Tools/main/assets/screenshots/session-loaded.png)
+
+## Storage Layout
+
+- `manual_loop_projects/<project_id>/`
+  - edit history and resume state
+  - `project_state.json`, `execution.log`, `operations.jsonl`
+- `manual_loop_runs/<run_id>/`
+  - one optimization result
+  - edited g2o, constraints CSV, optimized TUM, map PCD, trajectory PCD, report, plot, run context
+- `manual_loop_exports/<export_id>/`
+  - lightweight final-export manifest
+  - no full duplicate copy of the selected run
+
 ## Helpful Links
 
 - [GUI Workflow](https://github.com/JokerJohn/Manual-Loop-Closure-Tools/wiki/GUI-Workflow)

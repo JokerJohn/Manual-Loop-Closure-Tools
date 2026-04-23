@@ -41,3 +41,12 @@ Python backend 遵循与 legacy optimizer 相同的参数优先级：
 - `trajectory.pcd`
 - `pose_graph.png`
 - `manual_loop_report.json`
+
+完整目录结构是：
+
+- `manual_loop_projects/<project_id>/`
+  - 编辑状态与恢复文件
+- `manual_loop_runs/<run_id>/`
+  - 真正的优化输出
+- `manual_loop_exports/<export_id>/`
+  - 指向某次 run 的最终导出清单

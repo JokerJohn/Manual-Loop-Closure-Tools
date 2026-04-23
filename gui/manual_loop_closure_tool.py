@@ -5,6 +5,7 @@ import argparse
 import copy
 import csv
 import importlib.util
+import json
 import math
 import os
 import subprocess
@@ -153,8 +154,15 @@ try:
         resolve_python_optimizer_backend,
     )
     # ===== END CHANGE: optimizer backend imports =====
-    from manual_loop_closure.pcd_io import PcdValidationError, validate_keyframe_numbering  # noqa: E402
-    from manual_loop_closure.registration import build_delta_transform  # noqa: E402
+    from manual_loop_closure.pcd_io import (  # noqa: E402
+        PcdValidationError,
+        load_xyz_points,
+        validate_keyframe_numbering,
+    )
+    from manual_loop_closure.registration import (  # noqa: E402
+        build_delta_transform,
+        transform_points,
+    )
 except ModuleNotFoundError as exc:
     if exc.name != "open3d":
         raise
@@ -641,6 +649,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self._cpp_optimizer_command_cache: Optional[list[str]] = None
         self._show_legacy_backend_controls = False
         self._optimizer_started_at: Optional[float] = None
+        self._project_dir: Optional[Path] = None
+        self._project_state_path: Optional[Path] = None
+        self._project_log_path: Optional[Path] = None
+        self._project_ops_path: Optional[Path] = None
+        self._project_id: Optional[str] = None
+        self._latest_export_dir: Optional[Path] = None
+        self._requested_project_dir: Optional[Path] = None
 
         self._preview_timer = QtCore.QTimer(self)
         self._preview_timer.setSingleShot(True)
@@ -1033,6 +1048,23 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             return str(candidate if candidate.is_dir() else candidate.parent)
         return str(Path.home())
 
+    def _project_state_dialog_directory(self) -> str:
+        session_root_dir = self._existing_dialog_directory(self.session_root_edit.text())
+        if session_root_dir is not None:
+            projects_dir = session_root_dir / "manual_loop_projects"
+            if projects_dir.is_dir():
+                return str(projects_dir)
+            return str(session_root_dir)
+        for candidate in (
+            self._settings_existing_path("browser/last_project_state"),
+            self._settings_existing_path("browser/last_session_root"),
+            Path.home(),
+        ):
+            if candidate is None:
+                continue
+            return str(candidate if candidate.is_dir() else candidate.parent)
+        return str(Path.home())
+
     def _is_g2o_under_session_root(self, session_root: Path, g2o_path: Path) -> bool:
         try:
             g2o_path.resolve().relative_to(session_root.resolve())
@@ -1043,6 +1075,10 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
     def _remember_loaded_paths(self, paths: SessionPaths) -> None:
         self._settings.setValue("browser/last_session_root", str(paths.session_root))
         self._settings.setValue("browser/last_g2o_path", str(paths.g2o_path))
+        self._settings.sync()
+
+    def _remember_project_state_path(self, project_state_path: Path) -> None:
+        self._settings.setValue("browser/last_project_state", str(project_state_path))
         self._settings.sync()
 
     def _release_plot_toolbar_navigation(self) -> bool:
@@ -1120,6 +1156,9 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         browse_g2o_button = QtWidgets.QPushButton("Browse G2O")
         browse_g2o_button.setToolTip("Open the g2o file browser from the most recent folder.")
         browse_g2o_button.clicked.connect(self._browse_g2o)
+        open_project_button = QtWidgets.QPushButton("Open Project")
+        open_project_button.setToolTip("Open a previous edit project by selecting its project_state.json.")
+        open_project_button.clicked.connect(self._browse_project_state)
         load_button = QtWidgets.QPushButton("Load Session")
         load_button.setProperty("buttonRole", "primary")
         load_button.clicked.connect(self.load_session)
@@ -1130,12 +1169,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         layout.addWidget(QtWidgets.QLabel("G2O File"), 1, 0)
         layout.addWidget(self.g2o_edit, 1, 1)
         layout.addWidget(browse_g2o_button, 1, 2)
-        layout.addWidget(load_button, 1, 3)
+        layout.addWidget(open_project_button, 1, 3)
+        layout.addWidget(load_button, 1, 4)
         layout.setColumnStretch(1, 1)
 
         self.session_info_label = QtWidgets.QLabel("No session loaded.")
         self.session_info_label.setWordWrap(True)
-        layout.addWidget(self.session_info_label, 2, 0, 1, 4)
+        layout.addWidget(self.session_info_label, 2, 0, 1, 5)
         return group
 
     def _build_plot_panel(self) -> QtWidgets.QGroupBox:
@@ -2219,9 +2259,354 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             transform_world_source_final=transform_world_source_final,
         )
 
-    def append_log(self, message: str) -> None:
+    def _projects_root(self) -> Optional[Path]:
+        if self.session_paths is None:
+            return None
+        return self.session_paths.session_root / "manual_loop_projects"
+
+    def _latest_project_pointer_path(self) -> Optional[Path]:
+        root = self._projects_root()
+        if root is None:
+            return None
+        return root / "latest_project.json"
+
+    def _new_project_id(self) -> str:
+        return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    def _project_payload_summary(self) -> dict:
+        return {
+            "project_id": self._project_id,
+            "session_root": str(self.session_paths.session_root) if self.session_paths is not None else None,
+            "g2o_path": str(self.session_paths.g2o_path) if self.session_paths is not None else None,
+            "tum_path": str(self.session_paths.tum_path) if self.session_paths is not None else None,
+            "keyframe_dir": str(self.session_paths.keyframe_dir) if self.session_paths is not None else None,
+            "working_revision": self._working_revision,
+            "session_dirty": self._session_dirty,
+            "last_output_dir": str(self._last_output_dir) if self._last_output_dir is not None else None,
+            "latest_export_dir": str(self._latest_export_dir) if self._latest_export_dir is not None else None,
+            "pick_mode": self.pick_mode,
+            "source_id": self.source_id,
+            "target_id": self.target_id,
+            "selected_edge_ref": (
+                {
+                    "edge_kind": self.selected_edge_ref.edge_kind,
+                    "edge_uid": self.selected_edge_ref.edge_uid,
+                }
+                if self.selected_edge_ref is not None
+                else None
+            ),
+            "candidate_replace_edge_uid": self._candidate_replace_edge_uid,
+            "constraints": [self._serialize_manual_constraint(constraint) for constraint in self.constraints],
+            "disabled_loop_changes": {
+                str(edge_uid): {
+                    "edge_uid": change.edge_uid,
+                    "enabled": change.enabled,
+                    "accepted_rev": change.accepted_rev,
+                    "applied_rev": change.applied_rev,
+                    "note": change.note,
+                }
+                for edge_uid, change in self.disabled_loop_changes.items()
+            },
+        }
+
+    def _serialize_manual_constraint(self, constraint: ManualConstraint) -> dict:
+        return {
+            "manual_uid": constraint.manual_uid,
+            "enabled": constraint.enabled,
+            "source_id": constraint.source_id,
+            "target_id": constraint.target_id,
+            "target_cloud_mode": constraint.target_cloud_mode,
+            "target_neighbors": constraint.target_neighbors,
+            "min_time_gap_sec": constraint.min_time_gap_sec,
+            "target_map_voxel_size": constraint.target_map_voxel_size,
+            "transform_world_source_final": constraint.transform_world_source_final.tolist(),
+            "transform_target_source_final": constraint.transform_target_source_final.tolist(),
+            "fitness": constraint.fitness,
+            "inlier_rmse": constraint.inlier_rmse,
+            "variance_t_m2": list(constraint.variance_t_m2),
+            "variance_r_rad2": list(constraint.variance_r_rad2),
+            "replaces_edge_uid": constraint.replaces_edge_uid,
+            "accepted_rev": constraint.accepted_rev,
+            "applied_rev": constraint.applied_rev,
+            "note": constraint.note,
+        }
+
+    def _deserialize_manual_constraint(self, payload: dict) -> ManualConstraint:
+        transform_world_source_final = np.asarray(
+            payload["transform_world_source_final"], dtype=np.float64
+        )
+        transform_target_source_final = np.asarray(
+            payload["transform_target_source_final"], dtype=np.float64
+        )
+        source_local = load_xyz_points(self.session_paths.keyframe_dir / f"{int(payload['source_id'])}.pcd")
+        source_points_world_final = transform_points(source_local, transform_world_source_final)
+        return ManualConstraint(
+            manual_uid=int(payload["manual_uid"]),
+            enabled=bool(payload["enabled"]),
+            source_id=int(payload["source_id"]),
+            target_id=int(payload["target_id"]),
+            target_cloud_mode=str(payload["target_cloud_mode"]),
+            target_neighbors=int(payload["target_neighbors"]),
+            min_time_gap_sec=float(payload["min_time_gap_sec"]),
+            target_map_voxel_size=float(payload["target_map_voxel_size"]),
+            transform_world_source_final=transform_world_source_final,
+            transform_target_source_final=transform_target_source_final,
+            source_points_world_final=source_points_world_final,
+            fitness=float(payload["fitness"]),
+            inlier_rmse=float(payload["inlier_rmse"]),
+            variance_t_m2=tuple(float(v) for v in payload["variance_t_m2"]),
+            variance_r_rad2=tuple(float(v) for v in payload["variance_r_rad2"]),
+            replaces_edge_uid=(
+                None if payload.get("replaces_edge_uid") is None else int(payload["replaces_edge_uid"])
+            ),
+            accepted_rev=int(payload.get("accepted_rev", 0)),
+            applied_rev=(
+                None if payload.get("applied_rev") is None else int(payload["applied_rev"])
+            ),
+            note=str(payload.get("note", "")),
+        )
+
+    def _write_json(self, path: Optional[Path], payload: dict) -> None:
+        if path is None:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    def _append_operation_entry(
+        self,
+        *,
+        message: str,
+        event: str = "log",
+        payload: Optional[dict] = None,
+    ) -> None:
+        if self._project_ops_path is None:
+            return
+        record = {
+            "ts": datetime.now().isoformat(timespec="seconds"),
+            "event": event,
+            "message": message,
+        }
+        if payload:
+            record["payload"] = payload
+        with self._project_ops_path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    def _save_project_state(self) -> None:
+        if self._project_state_path is None or self.session_paths is None:
+            return
+        payload = {
+            "version": 1,
+            "updated_at": datetime.now().isoformat(timespec="seconds"),
+            **self._project_payload_summary(),
+        }
+        self._write_json(self._project_state_path, payload)
+        latest_pointer = self._latest_project_pointer_path()
+        if latest_pointer is not None and self._project_dir is not None:
+            self._write_json(
+                latest_pointer,
+                {
+                    "project_id": self._project_id,
+                    "project_dir": str(self._project_dir),
+                    "updated_at": datetime.now().isoformat(timespec="seconds"),
+                },
+            )
+
+    def _write_run_context(self, output_dir: Path) -> None:
+        payload = {
+            "project_id": self._project_id,
+            "project_dir": str(self._project_dir) if self._project_dir is not None else None,
+            "project_state": str(self._project_state_path) if self._project_state_path is not None else None,
+            "execution_log": str(self._project_log_path) if self._project_log_path is not None else None,
+            "operations_log": str(self._project_ops_path) if self._project_ops_path is not None else None,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+        }
+        self._write_json(output_dir / "run_context.json", payload)
+
+    def _write_export_manifest(self, export_dir: Path, run_dir: Path) -> None:
+        manifest = {
+            "exported_at": datetime.now().isoformat(timespec="seconds"),
+            "project_id": self._project_id,
+            "project_dir": str(self._project_dir) if self._project_dir is not None else None,
+            "run_dir": str(run_dir),
+            "run_context": str(run_dir / "run_context.json"),
+            "report_json": str(run_dir / "manual_loop_report.json"),
+            "pose_graph_g2o": str(run_dir / "pose_graph.g2o"),
+            "optimized_tum": str(run_dir / "optimized_poses_tum.txt"),
+            "global_map_pcd": str(run_dir / "global_map_manual_imu.pcd"),
+            "trajectory_pcd": str(run_dir / "trajectory.pcd"),
+        }
+        self._write_json(export_dir / "export_manifest.json", manifest)
+        (export_dir / "selected_run.txt").write_text(str(run_dir) + "\n", encoding="utf-8")
+        symlink_path = export_dir / "run"
+        try:
+            if symlink_path.exists() or symlink_path.is_symlink():
+                symlink_path.unlink()
+            symlink_path.symlink_to(run_dir)
+        except OSError:
+            pass
+        exports_root = export_dir.parent
+        self._write_json(
+            exports_root / "latest_export.json",
+            {
+                "export_dir": str(export_dir),
+                "run_dir": str(run_dir),
+                "project_id": self._project_id,
+                "updated_at": datetime.now().isoformat(timespec="seconds"),
+            },
+        )
+
+    def _load_project_state_from_dir(self, project_dir: Path, paths: SessionPaths) -> bool:
+        try:
+            state_path = project_dir / "project_state.json"
+            if not state_path.is_file():
+                return False
+            payload = json.loads(state_path.read_text(encoding="utf-8"))
+            if str(payload.get("session_root", "")) != str(paths.session_root):
+                return False
+            self._project_dir = project_dir
+            self._project_state_path = state_path
+            self._project_log_path = project_dir / "execution.log"
+            self._project_ops_path = project_dir / "operations.jsonl"
+            self._project_id = str(payload.get("project_id", project_dir.name))
+            self._remember_project_state_path(state_path)
+            if self._project_log_path.is_file():
+                self.log_text.setPlainText(self._project_log_path.read_text(encoding="utf-8"))
+                self.log_text.moveCursor(QtGui.QTextCursor.End)
+            self.constraints = [
+                self._deserialize_manual_constraint(item)
+                for item in payload.get("constraints", [])
+            ]
+            self.disabled_loop_changes = {
+                int(edge_uid): ExistingLoopChange(
+                    edge_uid=int(change["edge_uid"]),
+                    enabled=bool(change["enabled"]),
+                    accepted_rev=int(change.get("accepted_rev", 0)),
+                    applied_rev=(
+                        None if change.get("applied_rev") is None else int(change["applied_rev"])
+                    ),
+                    note=str(change.get("note", "")),
+                )
+                for edge_uid, change in payload.get("disabled_loop_changes", {}).items()
+            }
+            self._working_revision = int(payload.get("working_revision", 0))
+            self._session_dirty = bool(payload.get("session_dirty", False))
+            self._last_output_dir = (
+                Path(payload["last_output_dir"]).expanduser()
+                if payload.get("last_output_dir")
+                else None
+            )
+            self._latest_export_dir = (
+                Path(payload["latest_export_dir"]).expanduser()
+                if payload.get("latest_export_dir")
+                else None
+            )
+            self.pick_mode = str(payload.get("pick_mode", "nodes"))
+            self.source_id = payload.get("source_id")
+            self.target_id = payload.get("target_id")
+            edge_ref_payload = payload.get("selected_edge_ref")
+            self.selected_edge_ref = (
+                SelectedEdgeRef(
+                    edge_kind=str(edge_ref_payload["edge_kind"]),
+                    edge_uid=int(edge_ref_payload["edge_uid"]),
+                )
+                if edge_ref_payload is not None
+                else None
+            )
+            self._candidate_replace_edge_uid = payload.get("candidate_replace_edge_uid")
+
+            self.pose_graph = copy.deepcopy(self.original_pose_graph)
+            for edge_uid, change in self.disabled_loop_changes.items():
+                edge = self.pose_graph.edge_index_by_uid.get(edge_uid)
+                if edge is not None:
+                    edge.enabled = not change.enabled
+
+            if self._last_output_dir is not None:
+                restored_tum = self._last_output_dir / "optimized_poses_tum.txt"
+                if restored_tum.is_file():
+                    self.trajectory = load_tum_trajectory(restored_tum)
+                    self.workspace = RegistrationWorkspace(paths.keyframe_dir, self.trajectory)
+            self._next_manual_uid = (
+                max((constraint.manual_uid for constraint in self.constraints), default=0) + 1
+            )
+            return True
+        except Exception:
+            return False
+
+    def _load_latest_project_state(self, paths: SessionPaths) -> bool:
+        pointer_path = paths.session_root / "manual_loop_projects" / "latest_project.json"
+        if not pointer_path.is_file():
+            return False
+        try:
+            pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+            project_dir = Path(pointer["project_dir"]).expanduser()
+        except Exception:
+            return False
+        return self._load_project_state_from_dir(project_dir, paths)
+
+    def _start_or_resume_project(self, paths: SessionPaths) -> None:
+        self.log_text.clear()
+        if self._requested_project_dir is not None:
+            requested_project_dir = self._requested_project_dir
+            self._requested_project_dir = None
+            if self._load_project_state_from_dir(requested_project_dir, paths):
+                self.append_log(
+                    f"Opened edit project {self._project_id} from {self._project_dir}",
+                    event="project_open",
+                )
+                return
+            self.append_log(
+                f"Requested project {requested_project_dir} could not be restored. Falling back to latest project or new project.",
+                event="project_open_failed",
+            )
+        if self._load_latest_project_state(paths):
+            self.append_log(
+                f"Resumed edit project {self._project_id} from {self._project_dir}",
+                event="project_resume",
+            )
+            return
+
+        project_root = paths.session_root / "manual_loop_projects"
+        project_root.mkdir(parents=True, exist_ok=True)
+        project_id = self._new_project_id()
+        project_dir = project_root / project_id
+        project_dir.mkdir(parents=True, exist_ok=True)
+        self._project_dir = project_dir
+        self._project_state_path = project_dir / "project_state.json"
+        self._project_log_path = project_dir / "execution.log"
+        self._project_ops_path = project_dir / "operations.jsonl"
+        self._project_id = project_id
+        self._write_json(
+            project_root / "latest_project.json",
+            {
+                "project_id": project_id,
+                "project_dir": str(project_dir),
+                "updated_at": datetime.now().isoformat(timespec="seconds"),
+            },
+        )
+        self._save_project_state()
+        self.append_log(
+            f"Started new edit project {project_id} at {project_dir}",
+            event="project_start",
+        )
+
+    def append_log(
+        self,
+        message: str,
+        *,
+        event: str = "log",
+        payload: Optional[dict] = None,
+    ) -> None:
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_text.appendPlainText(f"[{timestamp}] {message}")
+        line = f"[{timestamp}] {message}"
+        self.log_text.appendPlainText(line)
+        if self._project_log_path is not None:
+            self._project_log_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._project_log_path.open("a", encoding="utf-8") as stream:
+                stream.write(line + "\n")
+        self._append_operation_entry(message=message, event=event, payload=payload)
 
     def _browse_session_root(self) -> None:
         directory = QtWidgets.QFileDialog.getExistingDirectory(
@@ -2250,6 +2635,32 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self.g2o_edit.setText(path)
             self._settings.setValue("browser/last_g2o_path", path)
             self._settings.sync()
+
+    def _browse_project_state(self) -> None:
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Open Edit Project",
+            self._project_state_dialog_directory(),
+            filter="Project State (project_state.json);;JSON (*.json);;All Files (*)",
+        )
+        if not path:
+            return
+        project_state_path = Path(path).expanduser()
+        try:
+            payload = json.loads(project_state_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            self._show_error("Open Project Failed", f"Failed to read project state:\n{exc}")
+            return
+        session_root = payload.get("session_root")
+        g2o_path = payload.get("g2o_path")
+        if not session_root:
+            self._show_error("Open Project Failed", "project_state.json does not contain session_root.")
+            return
+        self.session_root_edit.setText(str(session_root))
+        self.g2o_edit.setText(str(g2o_path or ""))
+        self._remember_project_state_path(project_state_path)
+        self._requested_project_dir = project_state_path.parent
+        self.load_session()
 
     def _set_pick_mode(self, mode: str) -> None:
         self._release_plot_toolbar_navigation()
@@ -2323,6 +2734,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self._update_edge_action_buttons()
         self._sync_constraint_table_selection()
         self._refresh_plot(preserve_view=True)
+        self._save_project_state()
 
     def _select_edge(self, edge_ref: SelectedEdgeRef, *, reset_camera: bool) -> None:
         edge = self._edge_from_ref(edge_ref)
@@ -2398,6 +2810,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             )
             self._refresh_plot(preserve_view=True)
             self.append_log(f"Selected edge {edge.summary()}")
+            self._save_project_state()
         except Exception as exc:
             self._show_error("Preview Edge Failed", f"{exc}\n\n{traceback.format_exc()}")
 
@@ -2442,6 +2855,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self.append_log(
                 f"Selected manual constraint {constraint.target_id}->{constraint.source_id}"
             )
+            self._save_project_state()
         except Exception as exc:
             self._show_error("Preview Manual Constraint Failed", f"{exc}\n\n{traceback.format_exc()}")
 
@@ -2871,6 +3285,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self._update_edge_action_buttons()
         self._sync_constraint_table_selection()
         self._refresh_plot(preserve_view=True)
+        self._save_project_state()
         if had_selection:
             self.append_log("Cleared node/edge selection.")
 
@@ -2946,6 +3361,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self._pending_export_after_optimize = False
             self._undo_stack.clear()
             self._last_output_dir = None
+            self._latest_export_dir = None
             self.accept_button.setEnabled(False)
             self.gicp_metrics_label.setText("No GICP result.")
             self._set_pick_mode("nodes")
@@ -2977,6 +3393,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self._graph_change_status_filter = "All Status"
             self._graph_change_type_filter = "All Types"
             self._update_cloud_display_controls()
+            self._start_or_resume_project(paths)
             self._update_trajectory_legend_label()
             self.trajectory_view_info_label.setText(
                 f"P{self.trajectory.size} · L{len(self.pose_graph.loop_edges)} · edit"
@@ -2992,11 +3409,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self._update_session_status_widgets()
             self._refresh_plot(preserve_view=False)
             self._update_cloud_interaction_controls()
+            self._save_project_state()
 
             self.session_info_label.setText(
                 f"Loaded session: {paths.session_root} | "
                 f"g2o={paths.g2o_path.name} | tum={paths.tum_path.name} | "
-                f"keyframes={len(self.keyframe_paths)} | loops={len(self.pose_graph.loop_edges)}"
+                f"keyframes={len(self.keyframe_paths)} | loops={len(self.pose_graph.loop_edges)} | "
+                f"project={self._project_id}"
             )
             if stale_g2o_note:
                 self.append_log(stale_g2o_note)
@@ -3007,6 +3426,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 f"tum={paths.tum_path}, keyframes={len(self.keyframe_paths)}, "
                 f"existing_loops={len(self.pose_graph.loop_edges)}"
             )
+            self._save_project_state()
         except (
             SessionResolutionError,
             PoseGraphValidationError,
@@ -3347,6 +3767,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             f"{'Updated' if replaced else 'Accepted'} new manual edge "
             f"{constraint.target_id}->{constraint.source_id}"
         )
+        self._save_project_state()
+        self._save_project_state()
 
     def _upsert_manual_constraint(
         self,
@@ -3463,6 +3885,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             f"{'Updated' if replaced else 'Created'} replacement for existing loop "
             f"{edge.target_id}->{edge.source_id}; working graph now uses the new manual result."
         )
+        self._save_project_state()
 
     def _rebuild_constraint_table(self) -> None:
         self._table_updating = True
@@ -3553,6 +3976,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self._update_session_status_widgets()
             self._rebuild_constraint_table()
             self._refresh_plot(preserve_view=True)
+            self._save_project_state()
             return
 
         if item.column() != 12:
@@ -3577,6 +4001,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         )
         with QtCore.QSignalBlocker(self.constraint_table):
             item.setData(QtCore.Qt.UserRole, new_note)
+        self._save_project_state()
 
     def _on_constraint_selection_changed(self) -> None:
         if self._table_updating:
@@ -3610,6 +4035,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self._update_session_status_widgets()
         self._refresh_plot(preserve_view=True)
         self.append_log(f"Disabled existing loop edge {edge.target_id}->{edge.source_id}")
+        self._save_project_state()
 
     def restore_selected_edge(self) -> None:
         edge = self._edge_from_ref(self.selected_edge_ref)
@@ -3650,6 +4076,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             )
         else:
             self.append_log(f"Restored existing loop edge {edge.target_id}->{edge.source_id}")
+        self._save_project_state()
 
     def remove_selected_manual_constraint(self) -> None:
         edge = self._edge_from_ref(self.selected_edge_ref)
@@ -3695,6 +4122,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             )
         else:
             self.append_log(f"Removed manual constraint {removed.target_id}->{removed.source_id}")
+        self._save_project_state()
 
         if self.workspace is not None and self.source_id is not None and self.target_id is not None:
             self.schedule_preview_refresh(reset_camera=False)
@@ -3912,6 +4340,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             map_voxel_leaf=float(self.export_map_voxel_spin.value()),
         )
         self._last_output_dir = output_dir
+        self._write_run_context(output_dir)
         self._pre_optimize_snapshot = self._capture_undo_snapshot()
         self._pending_optimizer_options = options
         self._optimizer_retry_attempted = False
@@ -3950,6 +4379,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 self._undo_stack.append(self._pre_optimize_snapshot)
                 self.undo_button.setEnabled(True)
             self._apply_working_optimization_result()
+            self._save_project_state()
             if self._pending_export_after_optimize:
                 self._pending_export_after_optimize = False
                 self.export_final_result()
@@ -4020,6 +4450,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self._refresh_plot(preserve_view=False)
             if self.source_id is not None and self.target_id is not None:
                 self.schedule_preview_refresh(reset_camera=False)
+            self._save_project_state()
         except Exception as exc:
             self.append_log(f"Failed to update working graph after optimization: {exc}")
 
@@ -4052,12 +4483,19 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             / datetime.now().strftime("%Y%m%d_%H%M%S")
         )
         export_dir.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(self._last_output_dir, export_dir)
-        self.append_log(f"Exported final clean working result to {export_dir}")
+        export_dir.mkdir(parents=True, exist_ok=True)
+        self._write_export_manifest(export_dir, self._last_output_dir)
+        self._latest_export_dir = export_dir
+        self.append_log(
+            f"Exported final clean working manifest to {export_dir} -> {self._last_output_dir}",
+            event="export_final",
+            payload={"export_dir": str(export_dir), "run_dir": str(self._last_output_dir)},
+        )
+        self._save_project_state()
         QtWidgets.QMessageBox.information(
             self,
             "Export Final Result",
-            f"Exported final clean working result to:\n{export_dir}",
+            f"Exported final clean working manifest to:\n{export_dir}\n\nSelected run:\n{self._last_output_dir}",
         )
 
     def undo_last_change(self) -> None:
@@ -4066,6 +4504,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         snapshot = self._undo_stack.pop()
         self._restore_snapshot(snapshot)
         self.append_log("Undo restored the previous working-session state.")
+        self._save_project_state()
 
     def _show_error(self, title: str, message: str) -> None:
         self.append_log(f"{title}: {message}")

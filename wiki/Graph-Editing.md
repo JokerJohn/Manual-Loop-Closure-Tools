@@ -50,3 +50,24 @@ This means:
 - disabled loops are excluded
 - replacement loops are exported through the accepted working graph state
 - original input files are not overwritten
+
+## Project Logs and Replay
+
+Each edit project now writes:
+
+- `project_state.json`
+- `execution.log`
+- `operations.jsonl`
+
+This makes it possible to:
+
+- review what was changed during a manual editing session
+- reopen the latest project with `Load Session`
+- reopen a specific old project with `Open Project`
+
+## Run vs Export
+
+- `manual_loop_runs/` stores the actual optimization outputs
+- `manual_loop_exports/` stores a lightweight export manifest that points to one selected run
+
+So `Export` no longer duplicates the full run directory again.
