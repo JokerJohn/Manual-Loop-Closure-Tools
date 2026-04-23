@@ -210,13 +210,15 @@ make backend
 | 位置 | 作用 | 主要文件 |
 |---|---|---|
 | `manual_loop_projects/<project_id>/` | 持久化编辑项目，便于恢复和复盘 | `project_state.json`, `execution.log`, `operations.jsonl` |
-| `manual_loop_runs/<run_id>/` | 一次 `Optimize` 的真实输出 | `edited_input_pose_graph.g2o`, `manual_loop_constraints.csv`, `pose_graph.g2o`, `optimized_poses_tum.txt`, `global_map_manual_imu.pcd`, `trajectory.pcd`, `pose_graph.png`, `manual_loop_report.json`, `run_context.json` |
+| `manual_loop_runs/<run_id>/` | 一次 `Optimize` 的真实输出 | `edited_input_pose_graph.g2o`, `manual_loop_constraints.csv`, `pose_graph.g2o`, `optimized_poses_tum.txt`, `pose_graph.png`, `manual_loop_report.json`, `run_context.json` |
 | `manual_loop_exports/<export_id>/` | 轻量级最终导出清单，不再重复复制整包 run 数据 | `export_manifest.json`, `selected_run.txt`, `run` 软链接 |
 
 恢复逻辑：
 
 - `Load Session` 会恢复该 session 当前最新的编辑项目。
 - `Open Project` 可以通过选择某个 `project_state.json` 打开历史编辑项目。
+- `Optimize` 会立即更新 working graph 和优化后的 TUM，但默认不重建整张地图。
+- `Export` 会在写最终清单前按需生成 `global_map_manual_imu.pcd` 和 `trajectory.pcd`。
 - `Export` 不再复制整包优化结果，而是写一个指向目标 run 的清单。
 
 ## Python 与 C++ 一致性验证

@@ -24,9 +24,10 @@ class OptimizerRunOptions:
     constraints_csv: Path
     output_dir: Path
     map_voxel_leaf: float
+    skip_map_build: bool = False
 
     def to_cli_args(self) -> list[str]:
-        return [
+        args = [
             "--session-root",
             str(self.session_root),
             "--g2o",
@@ -42,6 +43,9 @@ class OptimizerRunOptions:
             "--map-voxel-leaf",
             f"{self.map_voxel_leaf:.6f}",
         ]
+        if self.skip_map_build:
+            args.append("--skip-map-build")
+        return args
 
 
 @dataclass(frozen=True)
@@ -55,6 +59,7 @@ class OptimizerRunResult:
     factor_count: int
     pose_count: int
     enabled_constraints: int
+    map_built: bool = True
 
 
 @dataclass(frozen=True)

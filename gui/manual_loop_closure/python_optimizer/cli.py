@@ -25,6 +25,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--constraints-csv", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--map-voxel-leaf", required=False, type=float, default=0.2)
+    parser.add_argument("--skip-map-build", action="store_true")
     return parser
 
 
@@ -40,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
         constraints_csv=args.constraints_csv,
         output_dir=args.output_dir,
         map_voxel_leaf=float(args.map_voxel_leaf),
+        skip_map_build=bool(args.skip_map_build),
     )
     try:
         result = run_python_optimizer(options, log_fn=print)

@@ -163,6 +163,10 @@ try:
         build_delta_transform,
         transform_points,
     )
+    from manual_loop_closure.python_optimizer.exporters import (  # noqa: E402
+        build_map_and_trajectory_from_tum,
+        update_report_map_fields,
+    )
 except ModuleNotFoundError as exc:
     if exc.name != "open3d":
         raise
@@ -2458,6 +2462,39 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             },
         )
 
+    def _ensure_run_map_outputs(self, run_dir: Path) -> None:
+        output_map = run_dir / "global_map_manual_imu.pcd"
+        output_trajectory = run_dir / "trajectory.pcd"
+        if output_map.is_file() and output_trajectory.is_file():
+            return
+        if self.session_paths is None:
+            raise RuntimeError("Session paths are unavailable for map export.")
+        optimized_tum = run_dir / "optimized_poses_tum.txt"
+        if not optimized_tum.is_file():
+            raise RuntimeError(f"Missing optimized TUM for export: {optimized_tum}")
+
+        self.append_log(
+            f"Export building final map from {optimized_tum.name} with voxel={self.export_map_voxel_spin.value():.3f} m"
+        )
+        map_point_count, trajectory_count, elapsed = build_map_and_trajectory_from_tum(
+            tum_path=optimized_tum,
+            keyframe_dir=self.session_paths.keyframe_dir,
+            output_map=output_map,
+            output_trajectory=output_trajectory,
+            voxel_leaf=float(self.export_map_voxel_spin.value()),
+            log_fn=self.append_log,
+        )
+        report_path = run_dir / "manual_loop_report.json"
+        update_report_map_fields(
+            report_path,
+            map_point_count=map_point_count,
+            map_build_elapsed_sec=elapsed,
+        )
+        self.append_log(
+            f"Export map build finished for {run_dir.name}: map_points={map_point_count}, "
+            f"trajectory_points={trajectory_count}, elapsed={elapsed:.2f}s"
+        )
+
     def _load_project_state_from_dir(self, project_dir: Path, paths: SessionPaths) -> bool:
         try:
             state_path = project_dir / "project_state.json"
@@ -4244,7 +4281,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             f"{sum(1 for constraint in self.constraints if constraint.enabled)} manual constraints, "
             f"{len(self._active_disabled_loop_changes())} disabled loop edges, "
             f"export_map_voxel={self.export_map_voxel_spin.value():.3f} m, "
-            f"optimizer backend={backend_name}."
+            f"optimizer backend={backend_name}. "
+            "Full map rebuild is deferred until Export."
         )
         self._optimizer_process.start()
 
@@ -4338,6 +4376,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             constraints_csv=csv_path,
             output_dir=output_dir,
             map_voxel_leaf=float(self.export_map_voxel_spin.value()),
+            skip_map_build=True,
         )
         self._last_output_dir = output_dir
         self._write_run_context(output_dir)
@@ -4375,6 +4414,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 f"Optimizer finished successfully ({self._active_optimizer_backend_name}). "
                 f"Output: {self._last_output_dir}{elapsed_text}"
             )
+            self.append_log("Working trajectory updated. Final map rebuild will run during Export.")
             if self._pre_optimize_snapshot is not None:
                 self._undo_stack.append(self._pre_optimize_snapshot)
                 self.undo_button.setEnabled(True)
@@ -4476,6 +4516,14 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 "No optimized working result is available yet. Run Optimize Working Graph first.",
             )
             return
+        try:
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            self._ensure_run_map_outputs(self._last_output_dir)
+        except Exception as exc:
+            self._show_error("Export Final Result", f"Failed to build final map during export:\n{exc}")
+            return
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
 
         export_dir = (
             self.session_paths.session_root

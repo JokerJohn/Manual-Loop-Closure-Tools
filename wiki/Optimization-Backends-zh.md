@@ -37,8 +37,6 @@ Python backend 遵循与 legacy optimizer 相同的参数优先级：
 
 - `pose_graph.g2o`
 - `optimized_poses_tum.txt`
-- `global_map_manual_imu.pcd`
-- `trajectory.pcd`
 - `pose_graph.png`
 - `manual_loop_report.json`
 
@@ -50,3 +48,5 @@ Python backend 遵循与 legacy optimizer 相同的参数优先级：
   - 真正的优化输出
 - `manual_loop_exports/<export_id>/`
   - 指向某次 run 的最终导出清单
+
+默认情况下，`global_map_manual_imu.pcd` 和 `trajectory.pcd` 会在 `Export` 阶段生成，这样多轮图编辑时更流畅。

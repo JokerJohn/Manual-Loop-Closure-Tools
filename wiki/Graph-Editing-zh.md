@@ -50,6 +50,8 @@
 - 被禁用的闭环边不会进入最终导出
 - 替换后的闭环以 working graph 的接受状态导出
 - 原始输入文件不会被覆盖
+- `Optimize` 先更新 working graph，并延后重量级地图重建
+- `Export` 只在需要时生成 `global_map_manual_imu.pcd` 和 `trajectory.pcd`
 
 ## 项目日志与复盘
 
@@ -71,3 +73,4 @@
 - `manual_loop_exports/` 保存指向某次 run 的轻量级导出清单
 
 因此 `Export` 不会再重复复制整包 run 数据。
+同样，重量级地图重建也会被延后到 `Export` 阶段。

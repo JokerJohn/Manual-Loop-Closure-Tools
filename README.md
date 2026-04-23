@@ -210,13 +210,15 @@ The tool now separates edit history, optimization outputs, and final export mani
 | Location | Purpose | Main files |
 |---|---|---|
 | `manual_loop_projects/<project_id>/` | Persistent edit project state for resume and review | `project_state.json`, `execution.log`, `operations.jsonl` |
-| `manual_loop_runs/<run_id>/` | One optimization run output | `edited_input_pose_graph.g2o`, `manual_loop_constraints.csv`, `pose_graph.g2o`, `optimized_poses_tum.txt`, `global_map_manual_imu.pcd`, `trajectory.pcd`, `pose_graph.png`, `manual_loop_report.json`, `run_context.json` |
+| `manual_loop_runs/<run_id>/` | One optimization run output | `edited_input_pose_graph.g2o`, `manual_loop_constraints.csv`, `pose_graph.g2o`, `optimized_poses_tum.txt`, `pose_graph.png`, `manual_loop_report.json`, `run_context.json` |
 | `manual_loop_exports/<export_id>/` | Lightweight final-export pointer without duplicating the full run directory | `export_manifest.json`, `selected_run.txt`, `run` symlink |
 
 Resume behavior:
 
 - `Load Session` resumes the latest edit project for the selected session root.
 - `Open Project` restores a specific historical project by selecting its `project_state.json`.
+- `Optimize` updates the working graph and optimized TUM immediately, but defers full map rebuilding.
+- `Export` builds `global_map_manual_imu.pcd` and `trajectory.pcd` on demand before writing the final manifest.
 - Export no longer copies the full optimized run again; it records a manifest that points to the selected run.
 
 ## Python vs C++ Parity Validation

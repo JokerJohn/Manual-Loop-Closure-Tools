@@ -48,10 +48,12 @@ Session input example:
   - `project_state.json`, `execution.log`, `operations.jsonl`
 - `manual_loop_runs/<run_id>/`
   - one optimization result
-  - edited g2o, constraints CSV, optimized TUM, map PCD, trajectory PCD, report, plot, run context
+  - edited g2o, constraints CSV, optimized TUM, report, plot, run context
 - `manual_loop_exports/<export_id>/`
   - lightweight final-export manifest
   - no full duplicate copy of the selected run
+
+`Optimize` updates the working graph quickly. `Export` is the stage that builds the final map and trajectory files.
 
 ## Helpful Links
 

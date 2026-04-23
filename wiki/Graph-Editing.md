@@ -50,6 +50,8 @@ This means:
 - disabled loops are excluded
 - replacement loops are exported through the accepted working graph state
 - original input files are not overwritten
+- `Optimize` updates the working graph first and defers heavy map rebuilding
+- `Export` builds `global_map_manual_imu.pcd` and `trajectory.pcd` only when needed
 
 ## Project Logs and Replay
 
@@ -71,3 +73,4 @@ This makes it possible to:
 - `manual_loop_exports/` stores a lightweight export manifest that points to one selected run
 
 So `Export` no longer duplicates the full run directory again.
+By design, the heavy map rebuild step is also delayed until `Export`.

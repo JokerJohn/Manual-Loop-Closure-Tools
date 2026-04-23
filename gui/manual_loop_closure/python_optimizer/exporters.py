@@ -13,6 +13,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from merge_pcds import PCDCloud, read_pcd, write_pcd
+from manual_loop_closure.pcd_io import list_numbered_pcds
+from manual_loop_closure.trajectory_io import load_tum_trajectory
 
 from .graph_loader import ANCHOR_VERTEX_ID, BetweenFactorRecord, GnssPriorRecord, PosePriorRecord
 
@@ -186,6 +188,59 @@ def save_trajectory_pcd(path: Path, measurements: list[MeasurementRecord], optim
     save_xyzi_pcd(path, points)
 
 
+def build_map_and_trajectory_from_tum(
+    *,
+    tum_path: Path,
+    keyframe_dir: Path,
+    output_map: Path,
+    output_trajectory: Path,
+    voxel_leaf: float,
+    log_fn: LogFn = None,
+) -> tuple[int, int, float]:
+    trajectory = load_tum_trajectory(tum_path)
+    keyframe_paths = list_numbered_pcds(keyframe_dir)
+    if trajectory.size != len(keyframe_paths):
+        raise RuntimeError(
+            "Keyframe count does not match optimized_poses_tum.txt: "
+            f"pcd={len(keyframe_paths)} tum={trajectory.size}"
+        )
+
+    merged_parts: list[np.ndarray] = []
+    total_frames = trajectory.size
+    build_start = time.perf_counter()
+    for index, keyframe_path in enumerate(keyframe_paths):
+        points_xyzi = load_xyzi_points(keyframe_path)
+        merged_parts.append(_apply_transform(points_xyzi, trajectory.transforms_world_sensor[index]))
+        if index == 0 or index + 1 == total_frames or (index + 1) % 250 == 0:
+            elapsed = time.perf_counter() - build_start
+            accumulated_points = sum(part.shape[0] for part in merged_parts)
+            _log(
+                log_fn,
+                "[MapExport] Progress "
+                f"{index + 1}/{total_frames} frames, points={accumulated_points}, elapsed={elapsed:.2f}s",
+            )
+
+    merged = np.vstack(merged_parts) if merged_parts else np.empty((0, 4), dtype=np.float32)
+    filtered = voxel_downsample_xyzi(merged, voxel_leaf)
+    if filtered.size == 0:
+        raise RuntimeError("Built map is empty.")
+    save_xyzi_pcd(output_map, filtered)
+
+    trajectory_points = np.zeros((trajectory.size, 4), dtype=np.float32)
+    trajectory_points[:, 0:3] = trajectory.positions_xyz.astype(np.float32, copy=False)
+    trajectory_points[:, 3] = trajectory.timestamps.astype(np.float32, copy=False)
+    save_xyzi_pcd(output_trajectory, trajectory_points)
+
+    elapsed = time.perf_counter() - build_start
+    _log(
+        log_fn,
+        "[MapExport] Built final map "
+        f"input_points={merged.shape[0]}, output_points={filtered.shape[0]}, "
+        f"voxel={voxel_leaf:.3f}, elapsed={elapsed:.2f}s",
+    )
+    return int(filtered.shape[0]), int(trajectory_points.shape[0]), elapsed
+
+
 def _format_upper_triangular_information(information: np.ndarray) -> str:
     values: list[str] = []
     for row in range(6):
@@ -312,6 +367,8 @@ def save_report_json(
     optimized_pose_count: int,
     factor_count: int,
     map_point_count: int,
+    map_built: bool,
+    map_build_elapsed_sec: float,
 ) -> None:
     report = {
         "session_root": str(session_root),
@@ -326,7 +383,26 @@ def save_report_json(
         "optimized_pose_count": optimized_pose_count,
         "factor_count": factor_count,
         "map_point_count": map_point_count,
+        "map_built": map_built,
+        "map_build_elapsed_sec": map_build_elapsed_sec,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def update_report_map_fields(
+    path: Path,
+    *,
+    map_point_count: int,
+    map_build_elapsed_sec: float,
+) -> None:
+    payload: dict
+    if path.is_file():
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    else:
+        payload = {}
+    payload["map_built"] = True
+    payload["map_point_count"] = int(map_point_count)
+    payload["map_build_elapsed_sec"] = float(map_build_elapsed_sec)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 # ===== END CHANGE: python optimizer exporters =====

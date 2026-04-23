@@ -37,8 +37,6 @@ Both backends export:
 
 - `pose_graph.g2o`
 - `optimized_poses_tum.txt`
-- `global_map_manual_imu.pcd`
-- `trajectory.pcd`
 - `pose_graph.png`
 - `manual_loop_report.json`
 
@@ -50,3 +48,5 @@ The full output layout is:
   - actual optimizer outputs
 - `manual_loop_exports/<export_id>/`
   - final-export manifest pointing to one selected run
+
+`global_map_manual_imu.pcd` and `trajectory.pcd` are built during `Export` by default so iterative graph editing stays responsive.

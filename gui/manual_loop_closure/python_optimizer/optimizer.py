@@ -297,6 +297,9 @@ def run_python_optimizer(
     output_png = options.output_dir / "pose_graph.png"
     output_report = options.output_dir / "manual_loop_report.json"
     copied_constraints = options.output_dir / "manual_loop_constraints.csv"
+    map_built = False
+    map_build_elapsed_sec = 0.0
+    map_point_count = 0
 
     write_pose_graph_g2o(
         output_g2o,
@@ -306,17 +309,25 @@ def run_python_optimizer(
         gtsam,
     )
     save_tum(output_tum, measurements, optimized, gtsam)
-    optimized_map = build_optimized_map(
-        measurements,
-        optimized,
-        gtsam,
-        options.map_voxel_leaf,
-        log_fn=log_fn,
-    )
-    if optimized_map.size == 0:
-        raise RuntimeError("Optimized point cloud map is empty.")
-    save_xyzi_pcd(output_map, optimized_map)
-    save_trajectory_pcd(output_trajectory, measurements, optimized, gtsam)
+    if options.skip_map_build:
+        _log(log_fn, "[PythonOptimizer] Map rebuild deferred until export.")
+        optimized_map = None
+    else:
+        map_stage_start = time.perf_counter()
+        optimized_map = build_optimized_map(
+            measurements,
+            optimized,
+            gtsam,
+            options.map_voxel_leaf,
+            log_fn=log_fn,
+        )
+        if optimized_map.size == 0:
+            raise RuntimeError("Optimized point cloud map is empty.")
+        save_xyzi_pcd(output_map, optimized_map)
+        save_trajectory_pcd(output_trajectory, measurements, optimized, gtsam)
+        map_built = True
+        map_build_elapsed_sec = time.perf_counter() - map_stage_start
+        map_point_count = int(optimized_map.shape[0])
     generate_pose_graph_png(Path(__file__).resolve().parents[3], output_g2o, output_png, log_fn=log_fn)
     save_report_json(
         output_report,
@@ -331,7 +342,9 @@ def run_python_optimizer(
         enabled_constraints=enabled_constraints,
         optimized_pose_count=len(measurements),
         factor_count=int(graph_result.graph.size()),
-        map_point_count=int(optimized_map.shape[0]),
+        map_point_count=map_point_count,
+        map_built=map_built,
+        map_build_elapsed_sec=map_build_elapsed_sec,
     )
     if options.constraints_csv.resolve() != copied_constraints.resolve():
         shutil.copyfile(options.constraints_csv, copied_constraints)
@@ -341,7 +354,7 @@ def run_python_optimizer(
         log_fn,
         "[PythonOptimizer] Finished successfully "
         f"total_elapsed={total_elapsed:.2f}s, final_error={final_error:.9e}, "
-        f"map_points={optimized_map.shape[0]}",
+        f"map_points={map_point_count}",
     )
     return OptimizerRunResult(
         output_dir=options.output_dir,
@@ -353,5 +366,6 @@ def run_python_optimizer(
         factor_count=int(graph_result.graph.size()),
         pose_count=len(measurements),
         enabled_constraints=enabled_constraints,
+        map_built=map_built,
     )
 # ===== END CHANGE: python optimizer orchestration =====

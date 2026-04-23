@@ -48,10 +48,12 @@ python launch_gui.py --session-root /path/to/mapping_session
   - `project_state.json`, `execution.log`, `operations.jsonl`
 - `manual_loop_runs/<run_id>/`
   - 一次优化输出
-  - 编辑后的 g2o、constraints CSV、优化后 TUM、地图 PCD、轨迹 PCD、报告、图像、run context
+  - 编辑后的 g2o、constraints CSV、优化后 TUM、报告、图像、run context
 - `manual_loop_exports/<export_id>/`
   - 轻量级最终导出清单
   - 不再重复复制整包 run 数据
+
+`Optimize` 会快速更新 working graph；真正生成最终地图和轨迹文件的是 `Export` 阶段。
 
 ## 快速链接
 

@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -30,6 +31,7 @@ struct Options
     fs::path constraints_csv;
     fs::path output_dir;
     double map_voxel_leaf = 0.2;
+    bool skip_map_build = false;
 };
 
 struct ManualConstraintSpec
@@ -171,6 +173,11 @@ bool ParseArgs(int argc, char **argv, Options &options)
         {
             return false;
         }
+        if (arg == "--skip-map-build")
+        {
+            options.skip_map_build = true;
+            continue;
+        }
         if (i + 1 >= argc)
         {
             throw std::runtime_error("Missing value for argument: " + arg);
@@ -231,7 +238,8 @@ void PrintUsage(const char *binary_name)
               << " --keyframe-dir <key_point_frame>"
               << " --constraints-csv <manual_loop_constraints.csv>"
               << " --output-dir <manual_loop_runs/...>"
-              << " [--map-voxel-leaf <meters>]\n";
+              << " [--map-voxel-leaf <meters>]"
+              << " [--skip-map-build]\n";
 }
 
 gtsam::SharedNoiseModel MakePoseNoise(
@@ -485,7 +493,9 @@ void SaveReportJson(const fs::path &path,
                     std::size_t enabled_constraints,
                     const std::vector<Measurement> &measurements,
                     const gtsam::NonlinearFactorGraph &graph,
-                    const pcl::PointCloud<PointT>::Ptr &map_cloud)
+                    const pcl::PointCloud<PointT>::Ptr &map_cloud,
+                    bool map_built,
+                    double map_build_elapsed_sec)
 {
     std::ofstream stream(path);
     if (!stream.is_open())
@@ -505,7 +515,10 @@ void SaveReportJson(const fs::path &path,
     stream << "  \"enabled_constraints\": " << enabled_constraints << ",\n";
     stream << "  \"optimized_pose_count\": " << measurements.size() << ",\n";
     stream << "  \"factor_count\": " << graph.size() << ",\n";
-    stream << "  \"map_point_count\": " << (map_cloud ? map_cloud->size() : 0) << "\n";
+    stream << "  \"map_point_count\": " << (map_cloud ? map_cloud->size() : 0) << ",\n";
+    stream << "  \"map_built\": " << (map_built ? "true" : "false") << ",\n";
+    stream << "  \"map_build_elapsed_sec\": " << std::fixed << std::setprecision(6)
+           << map_build_elapsed_sec << "\n";
     stream << "}\n";
 }
 
@@ -634,19 +647,33 @@ int main(int argc, char **argv)
         const fs::path output_tum = options.output_dir / "optimized_poses_tum.txt";
         SaveTum(output_tum, measurements, optimized);
 
-        const auto optimized_map = BuildOptimizedMap(
-            measurements,
-            optimized,
-            static_cast<float>(options.map_voxel_leaf));
-        const fs::path output_map = options.output_dir / "global_map_manual_imu.pcd";
-        if (optimized_map->empty() ||
-            pcl::io::savePCDFileBinary(output_map.string(), *optimized_map) != 0)
+        pcl::PointCloud<PointT>::Ptr optimized_map;
+        bool map_built = false;
+        double map_build_elapsed_sec = 0.0;
+        if (options.skip_map_build)
         {
-            throw std::runtime_error("Failed to save optimized point cloud map.");
+            std::cout << "[ManualLoopOptimize] Map rebuild deferred until export." << std::endl;
         }
+        else
+        {
+            const auto map_stage_start = std::chrono::steady_clock::now();
+            optimized_map = BuildOptimizedMap(
+                measurements,
+                optimized,
+                static_cast<float>(options.map_voxel_leaf));
+            const fs::path output_map = options.output_dir / "global_map_manual_imu.pcd";
+            if (optimized_map->empty() ||
+                pcl::io::savePCDFileBinary(output_map.string(), *optimized_map) != 0)
+            {
+                throw std::runtime_error("Failed to save optimized point cloud map.");
+            }
 
-        const fs::path output_trajectory_pcd = options.output_dir / "trajectory.pcd";
-        SaveTrajectoryPcd(output_trajectory_pcd, measurements, optimized);
+            const fs::path output_trajectory_pcd = options.output_dir / "trajectory.pcd";
+            SaveTrajectoryPcd(output_trajectory_pcd, measurements, optimized);
+            map_built = true;
+            map_build_elapsed_sec =
+                std::chrono::duration<double>(std::chrono::steady_clock::now() - map_stage_start).count();
+        }
 
         const fs::path output_png = options.output_dir / "pose_graph.png";
         GeneratePoseGraphImage(output_g2o, output_png);
@@ -659,7 +686,9 @@ int main(int argc, char **argv)
             enabled_constraints,
             measurements,
             graph,
-            optimized_map);
+            optimized_map,
+            map_built,
+            map_build_elapsed_sec);
 
         if (options.constraints_csv.parent_path() != options.output_dir)
         {
@@ -674,7 +703,7 @@ int main(int argc, char **argv)
         std::cout << "  enabled_constraints: " << enabled_constraints << std::endl;
         std::cout << "  pose_count: " << measurements.size() << std::endl;
         std::cout << "  factor_count: " << graph.size() << std::endl;
-        std::cout << "  map_points: " << optimized_map->size() << std::endl;
+        std::cout << "  map_points: " << (optimized_map ? optimized_map->size() : 0) << std::endl;
         return EXIT_SUCCESS;
     }
     catch (const std::exception &e)
