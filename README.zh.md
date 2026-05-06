@@ -13,7 +13,13 @@
     <img src="https://github.com/JokerJohn/Mannual-Loop-Closure-Tools/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
   <img src="https://img.shields.io/badge/python-3.10-blue.svg" alt="Python 3.10" />
-  <img src="https://img.shields.io/badge/optimizer-Python%20first-2E8B57.svg" alt="Python-first optimizer" />
+  <img src="https://img.shields.io/badge/optimizer-Python-2E8B57.svg" alt="Python optimizer" />
+  <a href="https://youtu.be/lemd4XfPSYY">
+    <img src="https://img.shields.io/badge/YouTube-demo-FF0000?logo=youtube&logoColor=white" alt="YouTube demo" />
+  </a>
+  <a href="https://www.bilibili.com/video/BV1B6R4BGEvo/">
+    <img src="https://img.shields.io/badge/Bilibili-demo-00A1D6?logo=bilibili&logoColor=white" alt="Bilibili demo" />
+  </a>
   <img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="GNU GPL v3.0 License" />
 </p>
 
@@ -33,10 +39,6 @@
   <a href="https://youtu.be/lemd4XfPSYY">
     <img src="https://img.youtube.com/vi/lemd4XfPSYY/hqdefault.jpg" alt="Manual Loop Closure Tools YouTube demo" width="80%" />
   </a>
-</p>
-
-<p align="center">
-  观看完整 YouTube 演示视频。
 </p>
 
 ## 项目简介
