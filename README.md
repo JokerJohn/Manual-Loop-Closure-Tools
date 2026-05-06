@@ -31,12 +31,12 @@ Offline manual loop-closure editing and optimization tools for LiDAR mapping pos
 
 <p align="center">
   <a href="https://youtu.be/lemd4XfPSYY">
-    <img src="assets/video-tutorial-card.png" alt="YouTube demo" width="100%" />
+    <img src="https://img.youtube.com/vi/lemd4XfPSYY/hqdefault.jpg" alt="Manual Loop Closure Tools YouTube demo" width="80%" />
   </a>
 </p>
 
 <p align="center">
-  Click the card to watch the end-to-end YouTube demo.
+  Watch the end-to-end YouTube demo.
 </p>
 
 ## Overview

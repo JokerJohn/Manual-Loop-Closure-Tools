@@ -31,12 +31,12 @@
 
 <p align="center">
   <a href="https://youtu.be/lemd4XfPSYY">
-    <img src="assets/video-tutorial-card.png" alt="YouTube demo" width="100%" />
+    <img src="https://img.youtube.com/vi/lemd4XfPSYY/hqdefault.jpg" alt="Manual Loop Closure Tools YouTube demo" width="80%" />
   </a>
 </p>
 
 <p align="center">
-  点击卡片可观看完整的 YouTube 演示视频。
+  观看完整 YouTube 演示视频。
 </p>
 
 ## 项目简介
