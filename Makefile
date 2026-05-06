@@ -1,7 +1,7 @@
 PYTHON ?= python3
 SESSION_ROOT ?=
 
-.PHONY: help venv gtsam-python check optimizer-help gui-help env-check backend docker-build docker-run-help assets clean
+.PHONY: help venv gtsam-python check test optimizer-help gui-help env-check backend docker-build docker-run-help assets clean
 
 help:
 	@echo "Targets:"
@@ -9,6 +9,7 @@ help:
 	@echo "  make gtsam-python"
 	@echo "                  Build/install the GTSAM 4.3 Python wrapper into the active venv"
 	@echo "  make check      Run Python syntax and smoke checks"
+	@echo "  make test       Run unit tests"
 	@echo "  make optimizer-help"
 	@echo "                  Print Python optimizer CLI help"
 	@echo "  make gui-help   Print GUI help"
@@ -33,6 +34,10 @@ check:
 	$(PYTHON) launch_gui.py --help
 	$(PYTHON) gui/manual_loop_closure/python_optimizer/cli.py --help
 	$(PYTHON) scripts/check_env.py
+	$(PYTHON) -m unittest discover -s tests
+
+test:
+	$(PYTHON) -m unittest discover -s tests
 
 optimizer-help:
 	$(PYTHON) gui/manual_loop_closure/python_optimizer/cli.py --help
