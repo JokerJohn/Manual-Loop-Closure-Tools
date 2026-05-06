@@ -63,6 +63,7 @@ All notable changes to this project will be documented in this file.
 - Reworked export behavior so `manual_loop_exports/` stores lightweight manifests pointing to `manual_loop_runs/` instead of duplicating the full optimization output.
 - Updated README and Wiki pages to explain the new project/run/export directory model and historical-project restore workflow.
 - Reworked the optimize/export flow so `Optimize` updates the working graph and optimized TUM first, while `Export` performs the heavyweight final map and trajectory rebuild on demand.
+- Fixed node-pair cloud preview after accepting a manual edge by reusing unapplied manual-edge poses as preview seeds, and cleared stale manual delta after optimization to avoid double-applying offsets.
 
 ### Validated
 

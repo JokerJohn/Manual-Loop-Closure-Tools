@@ -2219,12 +2219,41 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         finally:
             del blockers
 
+    def _clear_delta_silent(self) -> None:
+        self._set_delta_spin_values(np.zeros(6, dtype=np.float64))
+
     def _set_delta_from_world_source_transform(self, transform_world_source: np.ndarray) -> None:
         if self.current_preview is None or self.current_preview.transform_world_source_initial is None:
             return
         base_transform = self.current_preview.transform_world_source_initial
         delta_local = np.linalg.inv(base_transform) @ np.asarray(transform_world_source, dtype=np.float64)
         self._set_delta_spin_values(matrix_to_xyz_rpy_deg(delta_local))
+
+    def _set_delta_from_source_seed(self, source_id: int, transform_world_source: np.ndarray) -> None:
+        if self.workspace is None:
+            return
+        base_transform = self.workspace.trajectory.transforms_world_sensor[int(source_id)]
+        delta_local = np.linalg.inv(base_transform) @ np.asarray(transform_world_source, dtype=np.float64)
+        self._set_delta_spin_values(matrix_to_xyz_rpy_deg(delta_local))
+
+    def _unapplied_manual_seed_for_pair(self, source_id: int, target_id: int) -> Optional[ManualConstraint]:
+        constraint = self._constraint_by_pair(source_id, target_id)
+        if constraint is None or not constraint.enabled:
+            return None
+        if constraint.applied_rev is not None:
+            return None
+        return constraint
+
+    def _prepare_delta_for_pair_preview(self, source_id: int, target_id: int) -> None:
+        seed_constraint = self._unapplied_manual_seed_for_pair(source_id, target_id)
+        if seed_constraint is None:
+            self._clear_delta_silent()
+            return
+        self._set_delta_from_source_seed(source_id, seed_constraint.transform_world_source_final)
+        self.append_log(
+            "Using accepted manual edge as preview seed "
+            f"{seed_constraint.target_id}->{seed_constraint.source_id}; run Optimize to bake it into Working."
+        )
 
     def _invalidate_last_result_for_manual_align(self) -> None:
         if self.last_result is None and self.gicp_metrics_label.text().startswith("Manual align updated"):
@@ -2851,6 +2880,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self.current_preview = None
             self.last_result = None
             self.accept_button.setEnabled(False)
+            self._prepare_delta_for_pair_preview(self.source_id, self.target_id)
             self._set_display_mode("Preview")
             self.gicp_metrics_label.setText("Pair ready · preview refreshed.")
             self.append_log(
@@ -4571,6 +4601,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                 if change.enabled:
                     change.applied_rev = self._working_revision
             self._session_dirty = False
+            self._clear_delta_silent()
             self.current_preview = None
             self.last_result = None
             self._candidate_replace_edge_uid = None
