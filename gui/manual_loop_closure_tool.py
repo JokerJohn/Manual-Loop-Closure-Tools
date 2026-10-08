@@ -214,7 +214,8 @@ class ManualConstraint:
         translation = self.transform_target_source_final[:3, 3]
         quat_xyzw = matrix_to_quat_xyzw(self.transform_target_source_final)
         sigma_t = [math.sqrt(max(value, 0.0)) for value in self.variance_t_m2]
-        sigma_r = [math.sqrt(max(value, 0.0)) for value in self.variance_r_rad2]
+        # The variance is stored in rad^2, the CSV columns are sigma_{roll,pitch,yaw}_deg.
+        sigma_r_deg = [math.degrees(math.sqrt(max(value, 0.0))) for value in self.variance_r_rad2]
         return [
             "1" if self.enabled else "0",
             str(self.source_id),
@@ -229,9 +230,9 @@ class ManualConstraint:
             f"{sigma_t[0]:.6f}",
             f"{sigma_t[1]:.6f}",
             f"{sigma_t[2]:.6f}",
-            f"{sigma_r[0]:.6f}",
-            f"{sigma_r[1]:.6f}",
-            f"{sigma_r[2]:.6f}",
+            f"{sigma_r_deg[0]:.6f}",
+            f"{sigma_r_deg[1]:.6f}",
+            f"{sigma_r_deg[2]:.6f}",
         ]
 
     def as_edge_record(self) -> EdgeRecord:
