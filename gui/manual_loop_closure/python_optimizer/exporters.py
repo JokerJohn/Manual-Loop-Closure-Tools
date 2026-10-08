@@ -16,7 +16,13 @@ from merge_pcds import PCDCloud, read_pcd, write_pcd
 from manual_loop_closure.pcd_io import list_numbered_pcds
 from manual_loop_closure.trajectory_io import load_tum_trajectory
 
-from .graph_loader import ANCHOR_VERTEX_ID, BetweenFactorRecord, GnssPriorRecord, PosePriorRecord
+from .graph_loader import (
+    ANCHOR_VERTEX_ID,
+    BetweenFactorRecord,
+    GnssPriorRecord,
+    PosePriorRecord,
+    swap_pose3_information_order,
+)
 
 
 LogFn = Optional[Callable[[str], None]]
@@ -242,10 +248,12 @@ def build_map_and_trajectory_from_tum(
 
 
 def _format_upper_triangular_information(information: np.ndarray) -> str:
+    """Format a Pose3-order (rotation first) information matrix in g2o order (translation first)."""
+    g2o_information = swap_pose3_information_order(information)
     values: list[str] = []
     for row in range(6):
         for col in range(row, 6):
-            values.append(f"{information[row, col]:.15e}")
+            values.append(f"{g2o_information[row, col]:.15e}")
     return " ".join(values)
 
 

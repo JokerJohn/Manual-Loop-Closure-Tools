@@ -338,6 +338,20 @@ bool ExtractInformationMatrix(const SharedNoiseModel &noise, Eigen::Matrix<doubl
     return false;
 }
 
+// g2o stores the EDGE_SE3:QUAT information in the order [x y z | rx ry rz] (translation first);
+// GTSAM's Pose3 tangent space is [rx ry rz | x y z] (rotation first). gtsam::writeG2o/readG2o apply
+// this permutation; the custom reader and the anchor writer below must apply it as well.
+// The permutation is its own inverse.
+Eigen::Matrix<double, 6, 6> SwapPose3InformationOrder(const Eigen::Matrix<double, 6, 6> &information)
+{
+    Eigen::Matrix<double, 6, 6> swapped;
+    swapped.block<3, 3>(0, 0) = information.block<3, 3>(3, 3);
+    swapped.block<3, 3>(0, 3) = information.block<3, 3>(3, 0);
+    swapped.block<3, 3>(3, 0) = information.block<3, 3>(0, 3);
+    swapped.block<3, 3>(3, 3) = information.block<3, 3>(0, 0);
+    return swapped;
+}
+
 void WriteUpperTriangularInformation(std::ostream &out, const Eigen::Matrix<double, 6, 6> &information)
 {
     for (int i = 0; i < 6; ++i)
@@ -404,7 +418,8 @@ void AppendAnchorPriorToG2o(const std::string &filepath,
     out << "EDGE_SE3:QUAT " << kG2oAnchorId << ' ' << key.index() << ' '
         << t.x() << ' ' << t.y() << ' ' << t.z() << ' '
         << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w();
-    WriteUpperTriangularInformation(out, information);
+    // The anchor prior is an EDGE_SE3:QUAT line, so its information is written in g2o order.
+    WriteUpperTriangularInformation(out, SwapPose3InformationOrder(information));
     out << '\n';
 }
 
@@ -8200,6 +8215,8 @@ DataSaver::BuildFactorGraph(const std::string &g2o_file, gtsam::Values &initial_
                     }
                 }
             }
+            // g2o order (translation first) -> GTSAM Pose3 order (rotation first).
+            information_matrix = SwapPose3InformationOrder(information_matrix);
 
             Eigen::Quaterniond quat(qw, qx, qy, qz);
             Pose3 relative_pose(Rot3(quat), Point3(x, y, z));

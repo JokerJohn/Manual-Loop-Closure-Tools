@@ -166,7 +166,22 @@ def _make_xy_prior_factor(gtsam_mod, key: int, measurement_xy: np.ndarray, noise
     return gtsam_mod.CustomFactor(noise, [int(key)], error_func)
 
 
+# g2o stores the EDGE_SE3:QUAT information in the order [x y z | rx ry rz]
+# (translation first); GTSAM's Pose3 tangent space is [rx ry rz | x y z]
+# (rotation first). gtsam::writeG2o / readG2o apply this permutation, and so
+# must the GUI: the loader converts every EDGE_SE3:QUAT block to Pose3 order and
+# the exporter converts back. The permutation is its own inverse.
+_G2O_POSE3_PERMUTATION = np.asarray([3, 4, 5, 0, 1, 2], dtype=np.int64)
+
+
+def swap_pose3_information_order(information: np.ndarray) -> np.ndarray:
+    """Convert a 6x6 information matrix between g2o order and GTSAM Pose3 order."""
+    information = np.asarray(information, dtype=np.float64)
+    return information[np.ix_(_G2O_POSE3_PERMUTATION, _G2O_POSE3_PERMUTATION)].copy()
+
+
 def _parse_information_matrix(tokens: list[str], start_index: int) -> np.ndarray:
+    """Parse the 21 upper-triangular g2o values and return the matrix in GTSAM Pose3 order."""
     information = np.zeros((6, 6), dtype=np.float64)
     token_index = start_index
     for row in range(6):
@@ -174,7 +189,7 @@ def _parse_information_matrix(tokens: list[str], start_index: int) -> np.ndarray
             information[row, col] = float(tokens[token_index])
             information[col, row] = information[row, col]
             token_index += 1
-    return information
+    return swap_pose3_information_order(information)
 
 
 def build_factor_graph(
