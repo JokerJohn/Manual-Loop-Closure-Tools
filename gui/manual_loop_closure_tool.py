@@ -2011,6 +2011,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             self._show_error("Audit Loops", f"{exc}\n\n{traceback.format_exc()}")
             return
         loops = self._audit_loops_from_working_state(graph)
+        self._audit_signature = self._audit_state_signature()
         if not loops:
             self._show_error("Audit Loops", "The working state has no active loop to audit.")
             return
@@ -2062,8 +2063,17 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.audit_status_label.setText("Audit failed, see the log.")
         self._show_error("Audit Loops", message)
 
+    def _audit_state_signature(self) -> tuple:
+        """Identity of the loop set an audit refers to; a changed set invalidates the audit."""
+        return (
+            id(self.original_pose_graph),
+            tuple(sorted(c.manual_uid for c in self.constraints if c.enabled)),
+            tuple(sorted(uid for uid, ch in self.disabled_loop_changes.items() if ch.enabled)),
+        )
+
     def _on_loop_audit_finished(self, result) -> None:
         from dataclasses import asdict
+        from manual_loop_closure.loop_audit import _json_safe
         self._audit_result = result
         n_remove = sum(1 for e in result.loops if e.suggestion == "remove")
         self.audit_status_label.setText(
@@ -2078,7 +2088,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         )
         if self._project_dir is not None:
             path = self._project_dir / f"loop_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            self._write_json(path, asdict(result))
+            self._write_json(path, _json_safe(asdict(result)))
             self._append_operation_entry(
                 message=f"loop audit: {len(result.loops)} loops, suggest removing {n_remove}",
                 event="loop_audit",
@@ -2141,6 +2151,11 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             return
         targets = [e for e in result.loops if e.suggestion == "remove"]
         if not targets:
+            return
+        if self._audit_state_signature() != getattr(self, "_audit_signature", None):
+            self._show_error("Disable Suggested Removals",
+                             "The loops changed after the audit; run the audit again before applying it.")
+            self.audit_apply_button.setEnabled(False)
             return
         self._push_undo_snapshot()
         changed = []
@@ -3703,6 +3718,14 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.schedule_preview_refresh(reset_camera=False)
 
     def load_session(self) -> None:
+        if getattr(self, "_audit_thread", None) is not None:
+            self._show_error("Load Session", "A loop audit is running; wait for it to finish.")
+            return
+        self._audit_result = None
+        if hasattr(self, "audit_table"):
+            self._rebuild_audit_table()
+            self.audit_apply_button.setEnabled(False)
+            self.audit_status_label.setText("Run the audit after loading a session.")
         try:
             session_root_text = self.session_root_edit.text().strip()
             g2o_text = self.g2o_edit.text().strip()
@@ -4930,6 +4953,8 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         QtWidgets.QMessageBox.critical(self, title, message)
 
     def closeEvent(self, event) -> None:  # noqa: N802
+        if getattr(self, "_audit_thread", None) is not None:
+            self._audit_thread.wait(30000)
         if self._optimizer_process is not None:
             self._optimizer_process.kill()
             self._optimizer_process.waitForFinished(1000)

@@ -59,7 +59,10 @@ class AuditLoop:
 class AuditConfig:
     voxel: float = 0.2            # scan voxel for the consistency score [m]
     points_per_scan: int = 600    # stitched points kept per keyframe
-    queries: int = 30000          # planar query points
+    queries: int = 60000          # planar query points
+    normal_radius: float = 0.5    # neighbourhood of the normal and planarity estimate [m]
+    neighbours: int = 64          # nearest neighbours searched for a point of another visit
+    min_overlap: int = 200        # fewer overlapping queries: the NAR is undefined
     min_dt: float = 30.0          # time gap between two visits [s]
     overlap_radius: float = 0.5   # cross-visit neighbour counted as overlap [m]
     normal_deg: float = 25.0      # normals agree within this angle
@@ -190,14 +193,15 @@ class ConsistencyScore:
             pts = load_points(i)
             pts = pts[np.isfinite(pts).all(1)]
             pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts)).voxel_down_sample(cfg.voxel)
-            pc.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=2.5 * cfg.voxel, max_nn=20))
+            pc.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=cfg.normal_radius, max_nn=30))
             p = np.asarray(pc.points)
             if len(p) < 10:
                 continue
-            _, nn = cKDTree(p).query(p, 10)
+            dist, nn = cKDTree(p).query(p, 10, distance_upper_bound=cfg.normal_radius)
+            nn = np.where(np.isfinite(dist), nn, np.arange(len(p))[:, None])   # pad with the point itself
             Q = p[nn] - p[nn].mean(1, keepdims=True)
             ev = np.linalg.eigvalsh(np.einsum('nki,nkj->nij', Q, Q))
-            planar = ev[:, 0] / np.maximum(ev.sum(1), 1e-12) < 0.02
+            planar = (ev[:, 0] / np.maximum(ev.sum(1), 1e-12) < 0.02) & (np.isfinite(dist).sum(1) >= 6)
             sel = rng.choice(len(p), min(cfg.points_per_scan, len(p)), replace=False)
             P.append(p[sel]); N.append(np.asarray(pc.normals)[sel]); PL.append(planar[sel])
             S.append(np.full(len(sel), i))
@@ -216,14 +220,14 @@ class ConsistencyScore:
         W = np.einsum('nij,nj->ni', R, self.P) + t
         Nw = np.einsum('nij,nj->ni', R, self.N)
         ids = self.query
-        d, nn = cKDTree(W).query(W[ids], 16)
+        d, nn = cKDTree(W).query(W[ids], self.cfg.neighbours)
         far = np.abs(self.t[self.S[nn]] - self.t[self.S[ids]][:, None]) >= self.cfg.min_dt
         first = np.argmax(far, 1)
         rows = np.arange(len(ids))
         j, dj = nn[rows, first], d[rows, first]
         ov = far.any(1) & (dj < self.cfg.overlap_radius)
-        if ov.sum() == 0:
-            return float('nan'), 0
+        if ov.sum() < self.cfg.min_overlap:
+            return float('nan'), int(ov.sum())
         cos = np.abs(np.einsum('ni,ni->n', Nw[ids[ov]], Nw[j[ov]]))
         return float((cos >= self.cos_min).mean()), int(ov.sum())
 
@@ -232,6 +236,8 @@ def recheck_loop(load_points, T: np.ndarray, L: AuditLoop, cfg: AuditConfig):
     """Re-register the source scan to the target window from the stored measurement."""
     import open3d as o3d
     j = L.target_id
+    if abs(L.source_id - j) <= 2 * cfg.recheck_window:
+        return float('nan'), float('nan'), float('nan'), float('nan')   # source inside its own target window
     tgt = []
     for k in range(max(0, j - cfg.recheck_window), min(len(T), j + cfg.recheck_window + 1)):
         Tjk = np.linalg.inv(T[j]) @ T[k]
@@ -261,7 +267,7 @@ def audit_loops(*, graph: LoopGraph, loops: Sequence[AuditLoop], load_points, ti
 
     def tick():
         nonlocal step
-        step += 1
+        step = min(step + 1, n_steps)
         if progress is not None:
             progress(step, n_steps)
 
@@ -282,7 +288,7 @@ def audit_loops(*, graph: LoopGraph, loops: Sequence[AuditLoop], load_points, ti
         e.nar_single, _ = score(graph.solve([L]))
         e.d_single = e.nar_single - nar_none
         tick()
-        if e.d_single < -cfg.tol:
+        if np.isfinite(e.d_single) and e.d_single < -cfg.tol:
             e.stage = 1
         else:
             passed.append(L)
@@ -298,9 +304,11 @@ def audit_loops(*, graph: LoopGraph, loops: Sequence[AuditLoop], load_points, ti
             e = ev[L.uid]
             e.nar_without, _ = score(graph.solve([M for M in active if M.uid != L.uid]))
             e.d_loo = e.nar_without - nar_cur
-            if e.d_loo > best_d:
+            if np.isfinite(e.d_loo) and e.d_loo > best_d:
                 best, best_d = L, e.d_loo
             tick()
+        if best is None:
+            break
         _log(log_fn, f'[LoopAudit] stage 2 round {rnd}: NAR {nar_cur:.3f}, best removal {best.uid} ({best_d:+.3f})')
         if best_d <= cfg.tol:
             break
@@ -348,8 +356,18 @@ def loops_from_session(graph: LoopGraph, constraints_csv: Optional[Path]) -> lis
     return out
 
 
+def _json_safe(x):
+    if isinstance(x, float) and not np.isfinite(x):
+        return None
+    if isinstance(x, dict):
+        return {k: _json_safe(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_json_safe(v) for v in x]
+    return x
+
+
 def save_result(res: AuditResult, path: Path) -> None:
-    d = asdict(res)
+    d = _json_safe(asdict(res))
     path.write_text(json.dumps(d, indent=1), encoding='utf-8')
 
 
