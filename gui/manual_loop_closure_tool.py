@@ -715,6 +715,7 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
 
         bottom_tabs = QtWidgets.QTabWidget()
         bottom_tabs.addTab(self._build_constraint_tab(), "Graph Changes")
+        bottom_tabs.addTab(self._build_audit_tab(), "Loop Audit")
         bottom_tabs.addTab(self._build_log_tab(), "Execution Log")
 
         main_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
@@ -1933,6 +1934,249 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         self.constraint_table.itemSelectionChanged.connect(self._on_constraint_selection_changed)
         layout.addWidget(self.constraint_table)
         return widget
+
+    # ===== BEGIN CHANGE: loop audit =====
+    AUDIT_COLUMNS = ["Edge", "Origin", "Src", "Tgt", "Suggestion", "Single dNAR", "LOO dNAR",
+                     "Refit fit@0.1", "Refit d [cm/deg]", "Residual [cm/deg]", "Reason"]
+
+    def _build_audit_tab(self) -> QtWidgets.QWidget:
+        widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(widget)
+        row = QtWidgets.QHBoxLayout()
+        self.audit_run_button = QtWidgets.QPushButton("Audit Loops")
+        self.audit_run_button.setToolTip(
+            "Score every active loop (existing and manual) by its effect on the cross-visit "
+            "consistency of the map and by re-registration, and suggest keep / check / remove."
+        )
+        self.audit_run_button.clicked.connect(self.run_loop_audit)
+        self.audit_apply_button = QtWidgets.QPushButton("Disable Suggested Removals")
+        self.audit_apply_button.setEnabled(False)
+        self.audit_apply_button.clicked.connect(self.apply_audit_removals)
+        self.audit_status_label = QtWidgets.QLabel("Run the audit after loading a session.")
+        self.audit_status_label.setObjectName("SubtleText")
+        row.addWidget(self.audit_run_button)
+        row.addWidget(self.audit_apply_button)
+        row.addWidget(self.audit_status_label, stretch=1)
+        layout.addLayout(row)
+        self.audit_table = QtWidgets.QTableWidget(0, len(self.AUDIT_COLUMNS))
+        self.audit_table.setHorizontalHeaderLabels(self.AUDIT_COLUMNS)
+        self.audit_table.horizontalHeader().setStretchLastSection(True)
+        self.audit_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.audit_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.audit_table.itemSelectionChanged.connect(self._on_audit_selection_changed)
+        layout.addWidget(self.audit_table)
+        self._audit_rows: list[tuple[str, int]] = []
+        self._audit_result = None
+        self._audit_thread = None
+        return widget
+
+    def _audit_loops_from_working_state(self, graph) -> list:
+        """Active loops of the working state: enabled existing loops and enabled manual constraints."""
+        from manual_loop_closure.loop_audit import AuditLoop
+        by_line = {item["line"]: item for item in graph.existing}
+        loops = []
+        for edge in self.original_pose_graph.loop_edges:
+            change = self.disabled_loop_changes.get(edge.edge_uid)
+            if change is not None and change.enabled:
+                continue
+            item = by_line.get(edge.line_index)
+            if item is None:
+                continue
+            loops.append(AuditLoop(f"existing:{edge.edge_uid}", item["source_id"], item["target_id"],
+                                   item["Z"], item["information"], "existing"))
+        for constraint in self.constraints:
+            if not constraint.enabled:
+                continue
+            sigma_t = np.sqrt(np.maximum(np.asarray(constraint.variance_t_m2, dtype=np.float64), 1e-12))
+            sigma_r = np.sqrt(np.maximum(np.asarray(constraint.variance_r_rad2, dtype=np.float64), 1e-12))
+            information = np.diag(1.0 / np.square(np.r_[sigma_r, sigma_t]))
+            loops.append(AuditLoop(f"manual:{constraint.manual_uid}", constraint.source_id, constraint.target_id,
+                                   np.asarray(constraint.transform_target_source_final, dtype=np.float64),
+                                   information, "manual"))
+        return loops
+
+    def run_loop_audit(self) -> None:
+        if self.session_paths is None or self.original_pose_graph is None or self.original_trajectory is None:
+            self._show_error("Audit Loops", "Load a session first.")
+            return
+        if self._audit_thread is not None:
+            self._show_error("Audit Loops", "An audit is already running.")
+            return
+        try:
+            gtsam = importlib.import_module("gtsam")
+            from manual_loop_closure.loop_audit import LoopGraph
+            graph = LoopGraph(self.session_paths.session_root, self.session_paths.g2o_path, gtsam,
+                              log_fn=self.append_log)
+        except Exception as exc:
+            self._show_error("Audit Loops", f"{exc}\n\n{traceback.format_exc()}")
+            return
+        loops = self._audit_loops_from_working_state(graph)
+        if not loops:
+            self._show_error("Audit Loops", "The working state has no active loop to audit.")
+            return
+        keyframe_dir = self.session_paths.keyframe_dir
+        timestamps = np.asarray(self.original_trajectory.timestamps, dtype=np.float64)
+        self.audit_run_button.setEnabled(False)
+        self.audit_apply_button.setEnabled(False)
+        self.audit_status_label.setText(f"Auditing {len(loops)} loops ...")
+        self.append_log(f"Loop audit started on {len(loops)} active loops.")
+
+        window = self
+
+        class _Worker(QtCore.QThread):
+            progressed = QtCore.pyqtSignal(int, int)
+            succeeded = QtCore.pyqtSignal(object)
+            failed = QtCore.pyqtSignal(str)
+
+            def run(self) -> None:
+                try:
+                    from manual_loop_closure.loop_audit import audit_loops
+                    cache: dict = {}
+
+                    def load_points(index: int):
+                        if index not in cache:
+                            cache[index] = load_xyz_points(keyframe_dir / f"{index}.pcd")
+                        return cache[index]
+
+                    result = audit_loops(graph=graph, loops=loops, load_points=load_points, timestamps=timestamps,
+                                         progress=lambda k, n: self.progressed.emit(k, n))
+                    self.succeeded.emit(result)
+                except Exception as exc:  # pragma: no cover - reported in the GUI
+                    self.failed.emit(f"{exc}\n\n{traceback.format_exc()}")
+
+        worker = _Worker(self)
+        worker.progressed.connect(
+            lambda k, n: window.audit_status_label.setText(f"Auditing {len(loops)} loops ... {k}/{n}")
+        )
+        worker.succeeded.connect(self._on_loop_audit_finished)
+        worker.failed.connect(self._on_loop_audit_failed)
+        worker.finished.connect(self._on_loop_audit_thread_done)
+        self._audit_thread = worker
+        worker.start()
+
+    def _on_loop_audit_thread_done(self) -> None:
+        self._audit_thread = None
+        self.audit_run_button.setEnabled(True)
+
+    def _on_loop_audit_failed(self, message: str) -> None:
+        self.audit_status_label.setText("Audit failed, see the log.")
+        self._show_error("Audit Loops", message)
+
+    def _on_loop_audit_finished(self, result) -> None:
+        from dataclasses import asdict
+        self._audit_result = result
+        n_remove = sum(1 for e in result.loops if e.suggestion == "remove")
+        self.audit_status_label.setText(
+            f"NAR without loops {result.nar_none:.3f} · all loops {result.nar_all:.3f} · "
+            f"after suggested removals {result.nar_final:.3f} · remove {n_remove} · {result.elapsed_sec:.0f} s"
+        )
+        self.audit_apply_button.setEnabled(n_remove > 0)
+        self._rebuild_audit_table()
+        self.append_log(
+            f"Loop audit finished in {result.elapsed_sec:.1f} s: {len(result.loops)} loops, "
+            f"suggest removing {n_remove}; NAR {result.nar_all:.3f} -> {result.nar_final:.3f}."
+        )
+        if self._project_dir is not None:
+            path = self._project_dir / f"loop_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            self._write_json(path, asdict(result))
+            self._append_operation_entry(
+                message=f"loop audit: {len(result.loops)} loops, suggest removing {n_remove}",
+                event="loop_audit",
+                payload={"path": str(path), "removed": list(result.removed)},
+            )
+
+    def _rebuild_audit_table(self) -> None:
+        result = self._audit_result
+        loops = [] if result is None else result.loops
+        colors = {
+            "remove": ("#fde8e8", "#9b1c1c"),
+            "check": ("#fff4db", "#8a5300"),
+            "keep": ("#e7f8ee", "#1f6f43"),
+            "redundant": ("#f1f5f9", "#475569"),
+        }
+        self._audit_rows = []
+        self.audit_table.setRowCount(len(loops))
+
+        def fmt(value: float, scale: float = 1.0, digits: int = 3) -> str:
+            return "-" if value is None or not np.isfinite(value) else f"{value * scale:.{digits}f}"
+
+        for row, e in enumerate(loops):
+            kind, uid = e.uid.split(":")
+            self._audit_rows.append((kind, int(uid)))
+            values = [
+                e.uid,
+                e.origin,
+                str(e.source_id),
+                str(e.target_id),
+                e.suggestion,
+                fmt(e.d_single, digits=3),
+                fmt(e.d_loo, digits=3),
+                fmt(e.recheck_fitness, digits=2),
+                f"{fmt(e.recheck_dt, 100, 1)} / {fmt(e.recheck_dr, 1, 2)}",
+                f"{fmt(e.residual_t, 100, 1)} / {fmt(e.residual_r, 1, 2)}",
+                e.reason,
+            ]
+            background, foreground = colors.get(e.suggestion, colors["redundant"])
+            for column, value in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(value)
+                item.setBackground(QtGui.QBrush(QtGui.QColor(background)))
+                item.setForeground(QtGui.QBrush(QtGui.QColor(foreground)))
+                self.audit_table.setItem(row, column, item)
+        self.audit_table.resizeColumnsToContents()
+
+    def _on_audit_selection_changed(self) -> None:
+        row = self.audit_table.currentRow()
+        if row < 0 or row >= len(self._audit_rows):
+            return
+        kind, uid = self._audit_rows[row]
+        if kind == "manual":
+            if self._constraint_by_uid(uid) is not None:
+                self._select_edge(SelectedEdgeRef("manual_added", uid), reset_camera=True)
+        elif self.pose_graph is not None and uid in self.pose_graph.edge_index_by_uid:
+            self._select_edge(SelectedEdgeRef("existing", uid), reset_camera=True)
+
+    def apply_audit_removals(self) -> None:
+        result = self._audit_result
+        if result is None:
+            return
+        targets = [e for e in result.loops if e.suggestion == "remove"]
+        if not targets:
+            return
+        self._push_undo_snapshot()
+        changed = []
+        for e in targets:
+            kind, uid_text = e.uid.split(":")
+            uid = int(uid_text)
+            if kind == "manual":
+                constraint = self._constraint_by_uid(uid)
+                if constraint is not None and constraint.enabled:
+                    constraint.enabled = False
+                    constraint.note = (constraint.note + " " if constraint.note else "") + "[audit] " + e.reason
+                    changed.append(f"manual {constraint.target_id}->{constraint.source_id}")
+            else:
+                edge = self.pose_graph.edge_index_by_uid.get(uid) if self.pose_graph is not None else None
+                if edge is not None and edge.edge_type == "loop_existing" and edge.enabled:
+                    edge.enabled = False
+                    self.disabled_loop_changes[uid] = ExistingLoopChange(
+                        edge_uid=uid,
+                        enabled=True,
+                        accepted_rev=self._working_revision,
+                        applied_rev=None,
+                        note="[audit] " + e.reason,
+                    )
+                    changed.append(f"existing {edge.target_id}->{edge.source_id}")
+        self._recompute_session_dirty()
+        self._update_selection_labels()
+        self._update_edge_action_buttons()
+        self._rebuild_constraint_table()
+        self._update_session_status_widgets()
+        self._refresh_plot(preserve_view=True)
+        self.audit_apply_button.setEnabled(False)
+        self.append_log(f"Disabled {len(changed)} loops suggested by the audit: {', '.join(changed)} (Undo restores them).")
+        self._append_operation_entry(message=f"audit removals: {len(changed)}", event="audit_apply",
+                                     payload={"edges": changed})
+        self._save_project_state()
+    # ===== END CHANGE: loop audit =====
 
     def _build_log_tab(self) -> QtWidgets.QWidget:
         widget = QtWidgets.QWidget()
