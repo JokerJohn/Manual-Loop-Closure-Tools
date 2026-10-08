@@ -90,6 +90,42 @@ class RegistrationResult:
     source_points_world_final: np.ndarray
     fitness: float
     inlier_rmse: float
+    fine_fitness: float = float("nan")   # overlap at 0.1 m after the fine refinement
+
+
+FINE_STAGES = (0.5, 0.2)      # [m] GICP correspondence distances of the fine refinement
+FINE_SCORE_DISTANCE = 0.1     # [m] overlap distance of the fine score
+
+
+def refine_fine(result: RegistrationResult) -> RegistrationResult:
+    """Refine a registration at 0.5 and 0.2 m and score its overlap at 0.1 m.
+
+    At the coarse correspondence distance of the interactive registration the overlap
+    fitness saturates indoors, so it cannot rank the seeds of a yaw sweep; the overlap
+    at 0.1 m after a fine refinement does."""
+    preview = result.preview
+    source = numpy_to_open3d(voxel_downsample(preview.source_points_local, 0.1))
+    target = numpy_to_open3d(voxel_downsample(preview.target_points_world, 0.1))
+    transform = result.transform_world_source_final
+    for distance in FINE_STAGES:
+        transform = np.asarray(
+            o3d.pipelines.registration.registration_generalized_icp(
+                source, target, distance, transform,
+                o3d.pipelines.registration.TransformationEstimationForGeneralizedICP(),
+                o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=30),
+            ).transformation,
+            dtype=np.float64,
+        )
+    evaluation = o3d.pipelines.registration.evaluate_registration(source, target, FINE_SCORE_DISTANCE, transform)
+    return RegistrationResult(
+        preview=preview,
+        transform_world_source_final=transform,
+        transform_target_source_final=np.linalg.inv(preview.transform_world_target) @ transform,
+        source_points_world_final=transform_points(preview.source_points_local, transform),
+        fitness=result.fitness,
+        inlier_rmse=float(evaluation.inlier_rmse),
+        fine_fitness=float(evaluation.fitness),
+    )
 
 
 def build_delta_transform(
