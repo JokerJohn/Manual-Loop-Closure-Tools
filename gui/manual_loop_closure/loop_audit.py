@@ -68,7 +68,8 @@ class AuditConfig:
     normal_deg: float = 25.0      # normals agree within this angle
     tol: float = 0.02             # NAR change counted as an effect (absolute)
     recheck: bool = True
-    recheck_window: int = 5       # target window +- keyframes for the re-registration
+    recheck_path: float = 10.0    # target window: keyframes within this path length of the target [m]
+    recheck_max_frames: int = 100 # ... and at most this many keyframes on either side
     recheck_fitness: float = 0.3  # overlap at 0.1 m below which a measurement is weak
     recheck_t: float = 0.2        # [m]  re-measured pose change beyond which it is weak
     recheck_r: float = 2.0        # [deg]
@@ -236,10 +237,15 @@ def recheck_loop(load_points, T: np.ndarray, L: AuditLoop, cfg: AuditConfig):
     """Re-register the source scan to the target window from the stored measurement."""
     import open3d as o3d
     j = L.target_id
-    if abs(L.source_id - j) <= 2 * cfg.recheck_window:
+    # target window: the keyframes within recheck_path metres of path length around j
+    P = T[:, :3, 3]
+    arc = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))]
+    window = np.nonzero(np.abs(arc - arc[j]) <= cfg.recheck_path)[0]
+    window = window[np.abs(window - j) <= cfg.recheck_max_frames]
+    if L.source_id in set(window.tolist()) or len(window) == 0:
         return float('nan'), float('nan'), float('nan'), float('nan')   # source inside its own target window
     tgt = []
-    for k in range(max(0, j - cfg.recheck_window), min(len(T), j + cfg.recheck_window + 1)):
+    for k in window:
         Tjk = np.linalg.inv(T[j]) @ T[k]
         p = load_points(k)
         tgt.append(p @ Tjk[:3, :3].T + Tjk[:3, 3])
