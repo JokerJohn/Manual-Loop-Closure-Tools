@@ -1723,13 +1723,13 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
         advanced_note.setWordWrap(True)
         advanced_layout_grid.addWidget(advanced_note, 0, 0, 1, 2)
         self.variance_t_shared_spin = self._make_double_spin(
-            step=0.01,
+            step=0.0005,
             minimum=0.0,
             maximum=100.0,
             value=OFFICE_DEFAULT_VARIANCE_T[0],
         )
         self.variance_r_shared_spin = self._make_double_spin(
-            step=0.01,
+            step=0.00001,
             minimum=0.0,
             maximum=100.0,
             value=OFFICE_DEFAULT_VARIANCE_R_RAD2[0],
