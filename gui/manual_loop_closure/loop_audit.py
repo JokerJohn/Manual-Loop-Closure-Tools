@@ -10,8 +10,11 @@ the fraction whose surface normals agree within ``normal_deg``.  Two visits of t
 same surface agree; a map folded by a wrong loop overlays different structures, whose
 normals do not.  The NAR is computed without any reference trajectory.
 
-Stage 1 (single-loop test).  Each loop is added alone to the graph without loops.
-A correct loop raises the NAR of that graph; a wrong loop lowers it.
+Stage 1 (drift bound and single-loop test).  A loop whose measurement disagrees with
+the odometry by more than a front end can drift over the path between its keyframes
+(0.5 m + 5 % of the path, 2 deg + 0.1 deg/m) is implausible.  Each remaining loop is
+added alone to the graph without loops: a correct loop raises the NAR of that graph,
+a wrong loop lowers it.
 Stage 2 (leave-one-out).  Among the loops that pass Stage 1, the graph is solved
 with all of them and once without each; the loop whose removal raises the NAR most
 (beyond ``tol``) is removed and the remaining loops are tested again, until no
@@ -74,6 +77,10 @@ class AuditConfig:
     recheck_t: float = 0.2        # [m]  re-measured pose change beyond which it is weak
     recheck_r: float = 2.0        # [deg]
     seed: int = 0
+    drift_t0: float = 0.5         # drift bound: a loop may correct at most drift_t0 + drift_t_rate * path [m]
+    drift_t_rate: float = 0.05    # ... 5 % of the path travelled between its keyframes
+    drift_r0: float = 2.0         # ... and drift_r0 + drift_r_rate * path [deg]
+    drift_r_rate: float = 0.1     # [deg/m]
 
 
 @dataclass
@@ -94,6 +101,9 @@ class LoopEvidence:
     recheck_dr: float = float('nan')        # [deg]
     suggestion: str = 'keep'                # keep | redundant | check | remove
     reason: str = ''
+    path_length: float = float('nan')       # odometry path between the two keyframes [m]
+    odom_innov_t: float = float('nan')      # Z against the odometry [m]
+    odom_innov_r: float = float('nan')      # [deg]
     stage: int = 0                          # 1 or 2: stage that removed it
 
 
@@ -277,7 +287,8 @@ def audit_loops(*, graph: LoopGraph, loops: Sequence[AuditLoop], load_points, ti
         if progress is not None:
             progress(step, n_steps)
 
-    nar_none, _ = score(graph.solve([]))
+    T_odom = graph.solve([])
+    nar_none, _ = score(T_odom)
     T_all = graph.solve(loops)
     nar_all, _ = score(T_all)
     tick()
@@ -287,10 +298,20 @@ def audit_loops(*, graph: LoopGraph, loops: Sequence[AuditLoop], load_points, ti
         e.residual_t, e.residual_r = _rel_err(np.linalg.inv(T_all[L.target_id]) @ T_all[L.source_id], L.Z)
         if cfg.recheck:
             e.recheck_fitness, e.recheck_rmse, e.recheck_dt, e.recheck_dr = recheck_loop(load_points, T_all, L, cfg)
-    # Stage 1: each loop alone against the graph without loops
+    # Stage 1: drift bound, then each loop alone against the graph without loops
+    arc = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(T_odom[:, :3, 3], axis=0), axis=1))]
     passed = []
     for L in loops:
         e = ev[L.uid]
+        e.path_length = float(abs(arc[L.source_id] - arc[L.target_id]))
+        e.odom_innov_t, e.odom_innov_r = _rel_err(np.linalg.inv(T_odom[L.target_id]) @ T_odom[L.source_id], L.Z)
+        if (e.odom_innov_t > cfg.drift_t0 + cfg.drift_t_rate * e.path_length
+                or e.odom_innov_r > cfg.drift_r0 + cfg.drift_r_rate * e.path_length):
+            e.stage = 1
+            e.reason = (f'it would correct {e.odom_innov_t:.2f} m / {e.odom_innov_r:.1f} deg of drift '
+                        f'over {e.path_length:.1f} m of path')
+            tick()
+            continue
         e.nar_single, _ = score(graph.solve([L]))
         e.d_single = e.nar_single - nar_none
         tick()
@@ -327,7 +348,8 @@ def audit_loops(*, graph: LoopGraph, loops: Sequence[AuditLoop], load_points, ti
                                 or e.recheck_dr > cfg.recheck_r)
         if e.stage == 1:
             e.suggestion = 'remove'
-            e.reason = f'alone, it lowers the NAR by {-e.d_single:.3f}'
+            if not e.reason:
+                e.reason = f'alone, it lowers the NAR by {-e.d_single:.3f}'
         elif e.stage == 2:
             e.suggestion = 'remove'
             e.reason = f'conflicts with the other loops: removing it raises the NAR by {e.d_loo:.3f}'
