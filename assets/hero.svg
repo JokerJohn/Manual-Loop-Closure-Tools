@@ -21,7 +21,7 @@
   <circle cx="165" cy="520" r="120" fill="#F59E0B" fill-opacity="0.08"/>
 
   <rect x="70" y="64" width="160" height="38" rx="19" fill="#E2E8F0" fill-opacity="0.10" stroke="#E2E8F0" stroke-opacity="0.18"/>
-  <text x="92" y="88" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="18" font-weight="700">Offline LiDAR Toolkit</text>
+  <text x="92" y="88" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="16" font-weight="700">Offline LiDAR Toolkit</text>
 
   <text x="70" y="170" fill="white" font-family="Arial, sans-serif" font-size="50" font-weight="800">Manual Loop Closure Tools</text>
   <text x="70" y="214" fill="#BFDBFE" font-family="Arial, sans-serif" font-size="24" font-weight="600">
@@ -44,13 +44,13 @@
 
   <rect x="792" y="188" width="182" height="116" rx="18" fill="#EFF6FF" stroke="#BFDBFE"/>
   <text x="814" y="221" fill="#1D4ED8" font-family="Arial, sans-serif" font-size="18" font-weight="700">Graph Edit</text>
-  <text x="814" y="248" fill="#334155" font-family="Arial, sans-serif" font-size="14">Pick nodes and weak loops</text>
-  <text x="814" y="269" fill="#334155" font-family="Arial, sans-serif" font-size="14">Review Working vs Original</text>
+  <text x="814" y="248" fill="#334155" font-family="Arial, sans-serif" font-size="13">Pick nodes and weak loops</text>
+  <text x="814" y="269" fill="#334155" font-family="Arial, sans-serif" font-size="13">Review Working vs Original</text>
 
   <rect x="996" y="188" width="182" height="116" rx="18" fill="#F0FDF4" stroke="#86EFAC"/>
   <text x="1018" y="221" fill="#15803D" font-family="Arial, sans-serif" font-size="18" font-weight="700">Map Alignment</text>
-  <text x="1018" y="248" fill="#334155" font-family="Arial, sans-serif" font-size="14">Align source to target map</text>
-  <text x="1018" y="269" fill="#334155" font-family="Arial, sans-serif" font-size="14">Run GICP or Auto Yaw</text>
+  <text x="1018" y="248" fill="#334155" font-family="Arial, sans-serif" font-size="13">Align source to target map</text>
+  <text x="1018" y="269" fill="#334155" font-family="Arial, sans-serif" font-size="13">Run GICP or Auto Yaw</text>
 
   <rect x="792" y="328" width="386" height="96" rx="18" fill="#F8FAFC" stroke="#CBD5E1"/>
   <text x="818" y="361" fill="#0F172A" font-family="Arial, sans-serif" font-size="18" font-weight="700">Graph Ops</text>

@@ -19,7 +19,7 @@ A single wrong loop closure folds a LiDAR map, and a missed loop leaves its drif
 **Key insight: a loop is judged by the map it produces, not by its noise model.** Two visits of the same surface agree in their surface normals, whereas a map folded by a wrong loop overlays different structures. The agreement of cross-visit overlaps therefore scores each loop without a reference trajectory.
 
 - **Verified loop editing.** A loop is added or replaced only after the source scan is registered to a target submap, with an automatic yaw sweep for reversed revisits.
-- **Loop audit.** Every active loop is checked against a drift bound and scored by map consistency and repeated registration, with a keep, check or remove suggestion.
+- **Loop audit.** Every active loop is checked against a drift bound and scored by map consistency and repeated registration, with a keep, check, remove or redundant suggestion.
 - **ROS-free optimization and export.** A Python GTSAM backend re-solves the edited graph and exports `g2o`, TUM, the global map and the trajectory, with resumable edit projects.
 
 | ![edge](assets/screenshots/edge-selected.png) | ![audit](assets/screenshots/loop-audit.png) |
@@ -48,7 +48,7 @@ Click the image to play the tutorial video ([Bilibili](https://www.bilibili.com/
 
 </div>
 
-**Verified loop editing.** The operator picks two keyframes or an existing loop, aligns the source scan in the point-cloud view, and accepts the GICP result as a new or replacing loop. The yaw sweep refines every seed at 0.5 m and 0.2 m and ranks the seeds by their overlap at 0.1 m.
+**Verified loop editing.** The operator picks two keyframes or an existing loop, aligns the source scan in the point-cloud view, and accepts the GICP result as a new or replacing loop. The yaw sweep refines every seed at 0.5 m and 0.2 m and ranks the seeds by their overlap at 0.1 m. The default loop noise is 5 cm and 0.3°.
 
 | <img src="assets/add_loopsx3.gif"> | <img src="assets/replace_loopx3.gif"> |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -63,7 +63,7 @@ $$
 
 </div>
 
-Each remaining loop is then added alone to the graph without loops and kept only if it raises the normal agreement ratio of the stitched map, the fraction of cross-visit overlaps $\mathcal{O}$ whose normals agree within 25°:
+On the sample session the drift bound flags the loops 706→68 and 713→62 (source→target), which would correct 17.1° and 20.0° of rotation drift. Each remaining loop is then added alone to the graph without loops: a loop that lowers the normal agreement ratio (NAR) of the stitched map is suggested for removal, a loop that raises it is kept, and a loop without measurable effect is marked redundant. The NAR is the fraction of cross-visit overlaps $\mathcal{O}$ whose normals agree within 25°:
 
 <div align="center">
 
@@ -73,12 +73,12 @@ $$
 
 </div>
 
-**Loop audit, stage 2.** A greedy leave-one-out removes the loops that pass alone but conflict with the others, and a coarse-to-fine re-registration (1.0, 0.3, 0.1 m) marks measurements that do not reproduce. The suggested removals are disabled in one undoable step; on the sample session the audit flags the two loops 706→68 and 713→62, which would correct 17.1° and 20.0° of rotation drift.
+**Loop audit, stage 2.** A greedy leave-one-out removes the loops that pass alone but conflict with the others, and a coarse-to-fine re-registration (1.0, 0.3, 0.1 m) marks measurements that do not reproduce. The suggested removals are disabled in one undoable step.
 
 | <img src="assets/disable_loop.gif"> | ![loaded](assets/screenshots/session-loaded.png) |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 
-**Optimization and export.** `Fast ISAM2` updates the working graph after each edit and `Accurate LM` gives the batch reference solve. The default loop noise is 5 cm and 0.3°. `Export` rebuilds the global map only once, for the selected run.
+**Optimization and export.** `Fast ISAM2` updates the working graph after each edit and `Accurate LM` gives the batch reference solve. `Export` rebuilds the global map only once, for the selected run.
 
 ## Getting Started
 
@@ -140,7 +140,7 @@ Further documentation: [Tool Manual](docs/TOOL_README.md), [Python GTSAM 4.3](do
 ## TODO
 
 - [x] Standalone GUI, Python optimizer, Docker image
-- [x] Loop audit with keep, check and remove suggestions
+- [x] Loop audit with keep, check, remove and redundant suggestions
 - [ ] Wiki page for the loop audit
 
 ## Citation
