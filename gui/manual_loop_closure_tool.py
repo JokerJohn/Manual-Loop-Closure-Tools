@@ -163,7 +163,6 @@ try:
     )
     from manual_loop_closure.registration import (  # noqa: E402
         build_delta_transform,
-        refine_fine,
         transform_points,
     )
     from manual_loop_closure.python_optimizer.exporters import (  # noqa: E402
@@ -4076,19 +4075,16 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
                     f"{self._gicp_log_cloud_summary(preview)}"
                 )
                 QtWidgets.QApplication.processEvents(QtCore.QEventLoop.AllEvents)
-                result = refine_fine(
-                    self.workspace.run_gicp(
-                        source_id=self.source_id,
-                        target_id=self.target_id,
-                        delta_transform_local=delta_transform,
-                        config=config,
-                    )
+                result = self.workspace.run_gicp(
+                    source_id=self.source_id,
+                    target_id=self.target_id,
+                    delta_transform_local=delta_transform,
+                    config=config,
                 )
                 candidate_results.append((yaw_seed, result))
                 self.append_log(
                     f"Auto yaw seed {yaw_seed:.1f} deg -> "
-                    f"fitness={result.fitness:.4f}, fine overlap@0.1m={result.fine_fitness:.3f}, "
-                    f"rmse={result.inlier_rmse:.4f} | "
+                    f"fitness={result.fitness:.4f}, rmse={result.inlier_rmse:.4f} | "
                     f"{self._gicp_log_cloud_summary(result.preview)}"
                 )
                 QtWidgets.QApplication.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents)
@@ -4096,11 +4092,15 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             if not candidate_results:
                 raise RuntimeError("Auto yaw sweep produced no valid GICP results.")
 
-            # rank the seeds by their overlap at 0.1 m after the fine refinement; the coarse
-            # fitness saturates indoors and selected wrong minima on reversed revisits
-            best_yaw_seed, best_result = max(
-                candidate_results,
-                key=lambda item: (item[1].fine_fitness, -item[1].inlier_rmse, -abs(item[0])),
+            max_fitness = max(result.fitness for _, result in candidate_results)
+            shortlist = [
+                (yaw_seed, result)
+                for yaw_seed, result in candidate_results
+                if result.fitness >= max(0.0, max_fitness - 0.05)
+            ]
+            best_yaw_seed, best_result = min(
+                shortlist,
+                key=lambda item: (item[1].inlier_rmse, -item[1].fitness, abs(item[0])),
             )
 
             blockers = [QtCore.QSignalBlocker(spin) for spin in self.delta_spins.values()]
@@ -4144,12 +4144,12 @@ class ManualLoopClosureWindow(QtWidgets.QMainWindow):
             )
             self.gicp_metrics_label.setText(
                 (
-                    f"Auto yaw · {best_yaw_seed:.1f}° · overlap@0.1m {best_result.fine_fitness:.3f} · "
+                    f"Auto yaw · {best_yaw_seed:.1f}° · fit {best_result.fitness:.4f} · "
                     f"rmse {best_result.inlier_rmse:.4f}"
                     "<br><span style='color:#64748b;font-size:11px'>Replace selected loop when confirmed.</span>"
                 )
                 if replace_edge_uid is not None
-                else f"Auto yaw · {best_yaw_seed:.1f}° · overlap@0.1m {best_result.fine_fitness:.3f} · rmse {best_result.inlier_rmse:.4f}"
+                else f"Auto yaw · {best_yaw_seed:.1f}° · fit {best_result.fitness:.4f} · rmse {best_result.inlier_rmse:.4f}"
             )
             self.accept_button.setEnabled(True)
             self._update_edge_action_buttons()
