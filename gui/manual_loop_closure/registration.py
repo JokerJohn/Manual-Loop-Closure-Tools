@@ -27,7 +27,7 @@ OFFICE_DEFAULT_VOXEL_SIZE = 0.0
 OFFICE_DEFAULT_MAX_CORRESPONDENCE_DISTANCE = 2.0
 OFFICE_DEFAULT_MAX_ITERATIONS = 30
 # loop noise: 5 cm and 0.3 deg per axis (variances); the former 0.1 rad^2 (18 deg) left
-# the rotation drift almost uncorrected (R20: ATE 0.27 m against 0.22 m)
+# the rotation drift almost uncorrected
 OFFICE_DEFAULT_VARIANCE_T = (0.0025, 0.0025, 0.0025)
 OFFICE_DEFAULT_VARIANCE_R_RAD2 = (2.7416e-05, 2.7416e-05, 2.7416e-05)
 
