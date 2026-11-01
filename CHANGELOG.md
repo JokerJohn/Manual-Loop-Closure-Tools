@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 本项目的重要变更会记录在本文件中。
 
+## [0.2.0] - 2026-11-01
+
+### Added
+
+- `Loop Audit` tab and `python -m manual_loop_closure.loop_audit` (run from `gui/`): every active loop is checked against a drift bound (0.5 m + 5 % of the path, 2 deg + 0.1 deg/m), scored by the normal agreement ratio (NAR) of cross-visit overlaps alone and in a greedy leave-one-out, and re-registered coarse to fine; each loop receives a keep / check / remove suggestion, and `Disable Suggested Removals` applies them in one undoable step. Audit results are stored as `loop_audit_*.json` in the edit project.
+- Unit tests `tests/test_g2o_information_order.py` and `tests/test_manual_constraint_sigma_units.py`.
+
+### Changed
+
+- The auto yaw sweep refines every seed at 0.5 m and 0.2 m and ranks the seeds by their overlap at 0.1 m instead of the GICP fitness at the interactive correspondence distance.
+- Default loop noise is 5 cm / 0.3 deg instead of 0.1 m^2 / 0.1 rad^2 (an 18 deg rotation sigma).
+- README restructured; GIF demos re-encoded below 5 MB; workflow figure includes the audit step.
+
+### Fixed
+
+- `EDGE_SE3:QUAT` information is read and written in g2o order (translation first). The Python loader and the C++ `BuildFactorGraph` passed the values to GTSAM in Pose3 order, which swapped the rotation and translation weights of every anisotropic edge; the Python writer produced files that `gtsam::readG2o` did not read correctly. Isotropic edges are unaffected. Sessions optimized with earlier versions should be optimized again.
+- Manual-loop rotation sigmas are written to `manual_loop_constraints.csv` in degrees. They were written in radians and read as degrees, so every manual loop was 57.3x tighter in rotation than configured.
+
 ## [0.1.0] - 2026-04-18
 
 ### Added

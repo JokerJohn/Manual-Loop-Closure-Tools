@@ -1,52 +1,54 @@
-<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1280" height="420" rx="24" fill="#F8FAFC"/>
+<svg width="1624" height="380" viewBox="0 0 1624 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1624" height="380" rx="24" fill="#F8FAFC"/>
   <text x="52" y="58" fill="#0F172A" font-family="Arial, sans-serif" font-size="28" font-weight="800">Typical workflow</text>
-  <text x="52" y="90" fill="#475569" font-family="Arial, sans-serif" font-size="18">Open a session, verify a closure, manage graph changes, and export a clean optimized result.</text>
-
+  <text x="52" y="90" fill="#475569" font-family="Arial, sans-serif" font-size="18">Load a session, audit its loops, verify and edit closures, optimize, and export the result.</text>
   <g font-family="Arial, sans-serif">
-    <rect x="52" y="142" width="206" height="194" rx="22" fill="#EFF6FF" stroke="#BFDBFE"/>
-    <circle cx="94" cy="188" r="24" fill="#1D4ED8"/>
-    <text x="87" y="196" fill="white" font-size="20" font-weight="800">1</text>
-    <text x="130" y="190" fill="#1E3A8A" font-size="22" font-weight="800">Load Session</text>
-    <text x="74" y="232" fill="#334155" font-size="17">• Resolve g2o / TUM / keyframes</text>
-    <text x="74" y="260" fill="#334155" font-size="17">• Validate IDs and point clouds</text>
-    <text x="74" y="288" fill="#334155" font-size="17">• Start from Original / Working view</text>
-
-    <rect x="294" y="142" width="206" height="194" rx="22" fill="#ECFDF5" stroke="#86EFAC"/>
-    <circle cx="336" cy="188" r="24" fill="#16A34A"/>
-    <text x="329" y="196" fill="white" font-size="20" font-weight="800">2</text>
-    <text x="372" y="190" fill="#166534" font-size="22" font-weight="800">Inspect & Match</text>
-    <text x="316" y="232" fill="#334155" font-size="17">• Pick nodes or an existing loop</text>
-    <text x="316" y="260" fill="#334155" font-size="17">• Adjust source pose visually</text>
-    <text x="316" y="288" fill="#334155" font-size="17">• Run GICP / Auto Yaw Sweep</text>
-
-    <rect x="536" y="142" width="206" height="194" rx="22" fill="#FFF7ED" stroke="#FDBA74"/>
-    <circle cx="578" cy="188" r="24" fill="#EA580C"/>
-    <text x="571" y="196" fill="white" font-size="20" font-weight="800">3</text>
-    <text x="614" y="190" fill="#9A3412" font-size="22" font-weight="800">Edit Graph</text>
-    <text x="558" y="232" fill="#334155" font-size="17">• Add manual edge</text>
-    <text x="558" y="260" fill="#334155" font-size="17">• Replace a weak existing loop</text>
-    <text x="558" y="288" fill="#334155" font-size="17">• Track changes and undo safely</text>
-
-    <rect x="778" y="142" width="206" height="194" rx="22" fill="#F5F3FF" stroke="#C4B5FD"/>
-    <circle cx="820" cy="188" r="24" fill="#7C3AED"/>
-    <text x="813" y="196" fill="white" font-size="20" font-weight="800">4</text>
-    <text x="856" y="190" fill="#5B21B6" font-size="22" font-weight="800">Optimize</text>
-    <text x="800" y="232" fill="#334155" font-size="17">• Solve a new working graph</text>
-    <text x="800" y="260" fill="#334155" font-size="17">• Update trajectory and constraints</text>
-    <text x="800" y="288" fill="#334155" font-size="17">• Iterate if more loops are needed</text>
-
-    <rect x="1020" y="142" width="206" height="194" rx="22" fill="#F0F9FF" stroke="#7DD3FC"/>
-    <circle cx="1062" cy="188" r="24" fill="#0284C7"/>
-    <text x="1055" y="196" fill="white" font-size="20" font-weight="800">5</text>
-    <text x="1098" y="190" fill="#0C4A6E" font-size="22" font-weight="800">Export</text>
-    <text x="1042" y="232" fill="#334155" font-size="17">• g2o / TUM / report</text>
-    <text x="1042" y="260" fill="#334155" font-size="17">• global_map_manual_imu.pcd</text>
-    <text x="1042" y="288" fill="#334155" font-size="17">• trajectory.pcd and figure outputs</text>
+    <rect x="52" y="132" width="230" height="196" rx="22" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="2"/>
+    <circle cx="90" cy="174" r="20" fill="#1D4ED8"/>
+    <text x="90" y="181" fill="white" font-size="19" font-weight="800" text-anchor="middle">1</text>
+    <text x="120" y="181" fill="#1E3A8A" font-size="19" font-weight="800">Load Session</text>
+    <text x="72" y="226" fill="#334155" font-size="14">• Resolve g2o, TUM, keyframes</text>
+    <text x="72" y="258" fill="#334155" font-size="14">• Validate IDs and point clouds</text>
+    <text x="72" y="290" fill="#334155" font-size="14">• Original and Working views</text>
+    <path d="M287 230H305" stroke="#94A3B8" stroke-width="5" stroke-linecap="round"/>
+    <rect x="310" y="132" width="230" height="196" rx="22" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="2"/>
+    <circle cx="348" cy="174" r="20" fill="#DC2626"/>
+    <text x="348" y="181" fill="white" font-size="19" font-weight="800" text-anchor="middle">2</text>
+    <text x="378" y="181" fill="#991B1B" font-size="19" font-weight="800">Audit Loops</text>
+    <text x="330" y="226" fill="#334155" font-size="14">• Drift bound per loop</text>
+    <text x="330" y="258" fill="#334155" font-size="14">• Cross-visit map consistency</text>
+    <text x="330" y="290" fill="#334155" font-size="14">• Keep / check / remove</text>
+    <path d="M545 230H563" stroke="#94A3B8" stroke-width="5" stroke-linecap="round"/>
+    <rect x="568" y="132" width="230" height="196" rx="22" fill="#ECFDF5" stroke="#86EFAC" stroke-width="2"/>
+    <circle cx="606" cy="174" r="20" fill="#16A34A"/>
+    <text x="606" y="181" fill="white" font-size="19" font-weight="800" text-anchor="middle">3</text>
+    <text x="636" y="181" fill="#166534" font-size="19" font-weight="800">Inspect &amp; Match</text>
+    <text x="588" y="226" fill="#334155" font-size="14">• Pick nodes or a loop</text>
+    <text x="588" y="258" fill="#334155" font-size="14">• Align the source scan</text>
+    <text x="588" y="290" fill="#334155" font-size="14">• GICP or Auto Yaw Sweep</text>
+    <path d="M803 230H821" stroke="#94A3B8" stroke-width="5" stroke-linecap="round"/>
+    <rect x="826" y="132" width="230" height="196" rx="22" fill="#FFF7ED" stroke="#FDBA74" stroke-width="2"/>
+    <circle cx="864" cy="174" r="20" fill="#EA580C"/>
+    <text x="864" y="181" fill="white" font-size="19" font-weight="800" text-anchor="middle">4</text>
+    <text x="894" y="181" fill="#9A3412" font-size="19" font-weight="800">Edit Graph</text>
+    <text x="846" y="226" fill="#334155" font-size="14">• Add a manual loop</text>
+    <text x="846" y="258" fill="#334155" font-size="14">• Replace or disable a loop</text>
+    <text x="846" y="290" fill="#334155" font-size="14">• Undo and change log</text>
+    <path d="M1061 230H1079" stroke="#94A3B8" stroke-width="5" stroke-linecap="round"/>
+    <rect x="1084" y="132" width="230" height="196" rx="22" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="2"/>
+    <circle cx="1122" cy="174" r="20" fill="#7C3AED"/>
+    <text x="1122" y="181" fill="white" font-size="19" font-weight="800" text-anchor="middle">5</text>
+    <text x="1152" y="181" fill="#5B21B6" font-size="19" font-weight="800">Optimize</text>
+    <text x="1104" y="226" fill="#334155" font-size="14">• Fast ISAM2 while editing</text>
+    <text x="1104" y="258" fill="#334155" font-size="14">• Accurate LM as reference</text>
+    <text x="1104" y="290" fill="#334155" font-size="14">• Re-audit the working graph</text>
+    <path d="M1319 230H1337" stroke="#94A3B8" stroke-width="5" stroke-linecap="round"/>
+    <rect x="1342" y="132" width="230" height="196" rx="22" fill="#F0F9FF" stroke="#7DD3FC" stroke-width="2"/>
+    <circle cx="1380" cy="174" r="20" fill="#0284C7"/>
+    <text x="1380" y="181" fill="white" font-size="19" font-weight="800" text-anchor="middle">6</text>
+    <text x="1410" y="181" fill="#0C4A6E" font-size="19" font-weight="800">Export</text>
+    <text x="1362" y="226" fill="#334155" font-size="14">• g2o / TUM / report</text>
+    <text x="1362" y="258" fill="#334155" font-size="14">• Global map PCD</text>
+    <text x="1362" y="290" fill="#334155" font-size="14">• Trajectory PCD</text>
   </g>
-
-  <path d="M260 238H290" stroke="#94A3B8" stroke-width="6" stroke-linecap="round"/>
-  <path d="M502 238H532" stroke="#94A3B8" stroke-width="6" stroke-linecap="round"/>
-  <path d="M744 238H774" stroke="#94A3B8" stroke-width="6" stroke-linecap="round"/>
-  <path d="M986 238H1016" stroke="#94A3B8" stroke-width="6" stroke-linecap="round"/>
 </svg>
