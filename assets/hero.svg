@@ -42,7 +42,7 @@
   <rect x="790" y="112" width="388" height="52" rx="16" fill="#0F172A"/>
   <text x="818" y="145" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="22" font-weight="700">Working Session</text>
 
-  <rect x="792" y="188" width="182" height="116" rx="18" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <rect x="788" y="188" width="192" height="116" rx="18" fill="#EFF6FF" stroke="#BFDBFE"/>
   <text x="814" y="221" fill="#1D4ED8" font-family="Arial, sans-serif" font-size="18" font-weight="700">Graph Edit</text>
   <text x="814" y="248" fill="#334155" font-family="Arial, sans-serif" font-size="13">Pick nodes and weak loops</text>
   <text x="814" y="269" fill="#334155" font-family="Arial, sans-serif" font-size="13">Review Working vs Original</text>
