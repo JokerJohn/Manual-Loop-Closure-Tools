@@ -1,7 +1,7 @@
 <svg width="1624" height="380" viewBox="0 0 1624 380" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="1624" height="380" rx="24" fill="#F8FAFC"/>
   <text x="52" y="58" fill="#0F172A" font-family="Arial, sans-serif" font-size="28" font-weight="800">Typical workflow</text>
-  <text x="52" y="90" fill="#475569" font-family="Arial, sans-serif" font-size="18">Load a session, audit its loops, verify and edit closures, optimize, and export the result.</text>
+  <text x="52" y="90" fill="#475569" font-family="Arial, sans-serif" font-size="18">Load a session, audit its loops, edit closures, optimize, and export the result.</text>
   <g font-family="Arial, sans-serif">
     <rect x="52" y="132" width="230" height="196" rx="22" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="2"/>
     <circle cx="90" cy="174" r="20" fill="#1D4ED8"/>

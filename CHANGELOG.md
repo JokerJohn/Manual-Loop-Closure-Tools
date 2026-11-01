@@ -13,7 +13,6 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- The auto yaw sweep refines every seed at 0.5 m and 0.2 m and ranks the seeds by their overlap at 0.1 m instead of the GICP fitness at the interactive correspondence distance.
 - Default loop noise is 5 cm / 0.3 deg instead of 0.1 m^2 / 0.1 rad^2 (an 18 deg rotation sigma).
 - README restructured; GIF demos re-encoded below 5 MB; workflow figure includes the audit step.
 

@@ -14,11 +14,10 @@
 
 ## Introduction
 
-A single wrong loop closure folds a LiDAR map, and a missed loop leaves its drift uncorrected; both are usually found only after mapping, when the online system is no longer running. **Manual Loop Closure Tools** opens an archived pose graph with its keyframe scans, audits every loop, and lets the operator verify, add, replace or disable loops before the graph is optimized and exported again, without ROS.
+A single wrong loop closure folds a LiDAR map, and a missed loop leaves its drift uncorrected; both are usually found only after mapping, when the online system is no longer running. **Manual Loop Closure Tools** opens an archived pose graph with its keyframe scans, audits every loop, and lets the operator add, replace or disable loops before the graph is optimized and exported again, without ROS.
 
 **Key insight: a loop is judged by the map it produces, not by its noise model.** Two visits of the same surface agree in their surface normals, whereas a map folded by a wrong loop overlays different structures. The agreement of cross-visit overlaps therefore scores each loop without a reference trajectory.
 
-- **Verified loop editing.** A loop is added or replaced only after the source scan is registered to a target submap, with an automatic yaw sweep for reversed revisits.
 - **Loop audit.** Every active loop is checked against a drift bound and scored by map consistency and repeated registration, with a keep, check, remove or redundant suggestion.
 - **ROS-free optimization and export.** A Python GTSAM backend re-solves the edited graph and exports `g2o`, TUM, the global map and the trajectory, with resumable edit projects.
 
@@ -27,7 +26,7 @@ A single wrong loop closure folds a LiDAR map, and a missed loop leaves its drif
 
 ## News
 
-- **2026/11/01**: Loop Audit tab, overlap-ranked yaw sweep, and two fixes of the edge weights read from and written to `g2o` files (see [Changelog](CHANGELOG.md)). Sessions optimized with earlier versions should be optimized again.
+- **2026/11/01**: Loop Audit tab and two fixes of the edge weights read from and written to `g2o` files (see [Changelog](CHANGELOG.md)). Sessions optimized with earlier versions should be optimized again.
 - **2026/04/18**: First standalone release of the GUI and the Python optimizer.
 
 ## Video
@@ -47,11 +46,6 @@ Click the image to play the tutorial video ([Bilibili](https://www.bilibili.com/
 ![workflow](assets/workflow.png)
 
 </div>
-
-**Verified loop editing.** The operator picks two keyframes or an existing loop, aligns the source scan in the point-cloud view, and accepts the GICP result as a new or replacing loop. The yaw sweep refines every seed at 0.5 m and 0.2 m and ranks the seeds by their overlap at 0.1 m. The default loop noise is 5 cm and 0.3°.
-
-| <img src="assets/add_loopsx3.gif"> | <img src="assets/replace_loopx3.gif"> |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
 
 **Loop audit, stage 1.** A loop is implausible when it corrects more drift than a LiDAR-inertial front end accumulates over the path length $L_{ij}$ between its keyframes:
 
@@ -76,6 +70,11 @@ $$
 **Loop audit, stage 2.** A greedy leave-one-out removes the loops that pass alone but conflict with the others, and a coarse-to-fine re-registration (1.0, 0.3, 0.1 m) marks measurements that do not reproduce. The suggested removals are disabled in one undoable step.
 
 | <img src="assets/disable_loop.gif"> | ![loaded](assets/screenshots/session-loaded.png) |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+
+**Loop editing.** The operator picks two keyframes or an existing loop, aligns the source scan in the point-cloud view, and accepts the GICP result as a new or replacing loop. The default loop noise is 5 cm and 0.3°.
+
+| <img src="assets/add_loopsx3.gif"> | <img src="assets/replace_loopx3.gif"> |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 
 **Optimization and export.** `Fast ISAM2` updates the working graph after each edit and `Accurate LM` gives the batch reference solve. `Export` rebuilds the global map only once, for the selected run.
